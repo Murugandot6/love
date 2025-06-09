@@ -1,0 +1,44 @@
+<script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit a Grievance</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container grievance-container">
+        <div class="header-nav">
+            <a href="dashboard.html" class="nav-link">View Dashboard</a>
+            <a href="#" id="logout" class="nav-link">Logout</a>
+        </div>
+        <h2>Submit a Grievance 🥀</h2>
+        <form id="grievanceForm">
+            <input type="text" id="title" placeholder="Title" required>
+            <textarea id="description" placeholder="What's bothering you?" required></textarea>
+            <div class="select-wrapper">
+                <label for="mood">Mood:</label>
+                <select id="mood" required>
+                    <option value="😡 Angry">😡 Angry</option>
+                    <option value="😢 Sad">😢 Sad</option>
+                    <option value="😐 Neutral">😐 Neutral</option>
+                    <option value="😊 Happy">😊 Happy</option>
+                </select>
+            </div>
+            <div class="select-wrapper">
+                <label for="severity">Severity:</label>
+                <select id="severity" required>
+                    <option value="A chunky kitkat would fix this 👹">A chunky kitkat would fix this 👹</option>
+                    <option value="Needs immediate attention">Needs immediate attention</option>
+                    <option value="Not a big deal">Not a big deal</option>
+                </select>
+            </div>
+            <button type="submit" class="btn submit-btn">Submit 💌</button>
+        </form>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

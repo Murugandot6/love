@@ -1,0 +1,83 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+body {
+    font-family: 'Poppins', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    background-color: #f7a0b8;
+    padding: 20px 0;
+}
+
+.container {
+    background: rgba(255, 255, 255, 0.85);
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    text-align: center;
+    max-width: 450px;
+    width: 90%;
+    backdrop-filter: blur(10px);
+}
+
+h1, h2 { color: #d6336c; }
+p { color: #333; line-height: 1.6; }
+
+input[type="text"], input[type="password"], select, textarea {
+    width: 100%;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+textarea { resize: vertical; min-height: 80px; }
+
+.btn {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    box-sizing: border-box;
+    margin-top: 10px;
+}
+
+.button-group .btn { margin-top: 5px; }
+.button-group { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+
+.login-btn { background-color: #28a745; }
+.submit-btn { background-color: #e83e8c; }
+.register-btn { background-color: #5c7cfa; }
+
+.select-wrapper { text-align: left; margin-bottom: 15px; }
+.select-wrapper label { display: block; margin-bottom: 5px; color: #555; font-weight: bold; }
+
+.form-link { margin-top: 20px; }
+.form-link a { color: #d6336c; font-weight: bold; }
+
+/* Dashboard Styles */
+.dashboard-container { max-width: 600px; }
+.header-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.header-nav h2 { margin: 0; }
+.nav-link { font-weight: bold; color: #d6336c; text-decoration: none; }
+
+#grievance-list { text-align: left; margin-top: 20px; }
+.grievance-item {
+    background: #fff;
+    border: 1px solid #eee;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.grievance-item h4 { margin: 0 0 5px 0; color: #333; }
+.grievance-item p { margin: 0 0 10px 0; color: #555; }
+.grievance-item .meta { font-size: 0.9em; color: #777; }

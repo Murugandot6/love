@@ -1,0 +1,25 @@
+<script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container dashboard-container">
+         <div class="header-nav">
+            <h2 id="welcome-user">Welcome!</h2>
+            <a href="#" id="logout" class="nav-link">Logout</a>
+        </div>
+        <h3>Your Submitted Grievances</h3>
+        <div id="grievance-list">
+            </div>
+        <a href="grievance.html" class="btn submit-btn">Submit a New Grievance</a>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
