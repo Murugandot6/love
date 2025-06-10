@@ -13,7 +13,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
-const storage = firebase.storage(); // Initialize Firebase Storage
+const storage = firebase.storage();
 
 // --- PAGE LOAD ROUTING ---
 document.addEventListener("DOMContentLoaded", () => {
@@ -21,29 +21,26 @@ document.addEventListener("DOMContentLoaded", () => {
         const page = window.location.pathname.split("/").pop();
         const protectedPages = ["dashboard.html", "grievance.html", "profile.html"];
         
-        if (user) { // User is logged in
+        if (user) {
             if (page === 'login.html' || page === 'register.html' || page === 'index.html' || page === '') {
                 window.location.href = 'dashboard.html';
             } else if (protectedPages.includes(page)) {
-                // Load page-specific logic for logged-in users
                 if (page === 'dashboard.html') loadDashboard();
                 if (page === 'profile.html') loadProfilePage();
                 if (page === 'grievance.html') initGrievanceForm();
             }
-        } else { // User is not logged in
+        } else {
             if (protectedPages.includes(page)) {
                 window.location.href = 'login.html';
             }
         }
     });
 
-    // Init forms that are on public pages
     const page = window.location.pathname.split("/").pop();
     if (page === 'register.html') initRegisterForm();
     if (page === 'login.html') initLoginForm();
     
-    // Universal logout listener
-    document.body.addEventListener('click', (e) => {
+    document.body.addEventListener('click', e => {
         if (e.target.matches('#logout')) {
             e.preventDefault();
             auth.signOut().then(() => window.location.href = 'login.html');
@@ -51,27 +48,23 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-
-// --- AUTHENTICATION ---
+// --- AUTHENTICATION (BUG FIXED) ---
 const initRegisterForm = () => {
     const form = document.getElementById('registerForm');
     form.addEventListener('submit', e => {
         e.preventDefault();
-        const nickname = form.nickname.value;
-        const email = form.email.value;
-        const password = form.password.value;
-        const partnerEmail = form.partnerEmail.value.toLowerCase();
+        const nickname = document.getElementById('nickname').value;
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const partnerEmail = document.getElementById('partnerEmail').value.toLowerCase();
 
         auth.createUserWithEmailAndPassword(email, password)
-            .then(cred => {
-                // Create user profile in Firestore
-                return db.collection('users').doc(cred.user.uid).set({
-                    email: email,
-                    nickname: nickname,
-                    partnerEmail: partnerEmail,
-                    profilePicUrl: null // Initialize with no picture
-                });
-            })
+            .then(cred => db.collection('users').doc(cred.user.uid).set({
+                email: email,
+                nickname: nickname,
+                partnerEmail: partnerEmail,
+                profilePicUrl: null
+            }))
             .then(() => {
                 alert('Registration successful!');
                 window.location.href = 'login.html';
@@ -84,8 +77,9 @@ const initLoginForm = () => {
     const form = document.getElementById('loginForm');
     form.addEventListener('submit', e => {
         e.preventDefault();
-        const email = form.username.value;
-        const password = form.password.value;
+        // BUG FIX: Use getElementById to get values
+        const email = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
         auth.signInWithEmailAndPassword(email, password)
             .then(() => window.location.href = 'dashboard.html')
             .catch(err => alert(err.message));
@@ -100,78 +94,67 @@ const loadProfilePage = async () => {
     const userDoc = await db.collection('users').doc(user.uid).get();
     const userData = userDoc.data();
 
-    // Populate form with existing data
     document.getElementById('nickname').value = userData.nickname || '';
     document.getElementById('partnerEmail').value = userData.partnerEmail || '';
     if (userData.profilePicUrl) {
         document.getElementById('profilePicPreview').src = userData.profilePicUrl;
     }
     
-    initProfileForm();
-};
-
-const initProfileForm = () => {
-    const form = document.getElementById('profileForm');
-    form.addEventListener('submit', async e => {
-        e.preventDefault();
-        const user = auth.currentUser;
-        const file = document.getElementById('profilePicUpload').files[0];
-        const nickname = document.getElementById('nickname').value;
-        const partnerEmail = document.getElementById('partnerEmail').value.toLowerCase();
-        let profilePicUrl = document.getElementById('profilePicPreview').src;
-
-        // 1. If a new file is uploaded, handle the upload
-        if (file) {
-            const storageRef = storage.ref(`profile_pictures/${user.uid}/${file.name}`);
-            const snapshot = await storageRef.put(file);
-            profilePicUrl = await snapshot.ref.getDownloadURL();
-        }
-
-        // 2. Update the user's document in Firestore
-        await db.collection('users').doc(user.uid).update({
-            nickname: nickname,
-            partnerEmail: partnerEmail,
-            profilePicUrl: profilePicUrl
-        });
-
-        alert('Profile updated successfully!');
-        window.location.href = 'dashboard.html';
-    });
-    
-    // Preview image on file select
+    // Logic to preview image on file select
     document.getElementById('profilePicUpload').addEventListener('change', e => {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
-            reader.onload = (event) => {
+            reader.onload = event => {
                 document.getElementById('profilePicPreview').src = event.target.result;
             }
             reader.readAsDataURL(file);
         }
     });
+    
+    initProfileForm();
 };
 
-// --- GRIEVANCE SUBMISSION (BUG FIXED) ---
+const initProfileForm = () => {
+    document.getElementById('profileForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        const user = auth.currentUser;
+        const file = document.getElementById('profilePicUpload').files[0];
+        const nickname = document.getElementById('nickname').value;
+        const partnerEmail = document.getElementById('partnerEmail').value.toLowerCase();
+        let currentPicUrl = (await db.collection('users').doc(user.uid).get()).data().profilePicUrl;
+
+        if (file) {
+            const storageRef = storage.ref(`profile_pictures/${user.uid}/${file.name}`);
+            const snapshot = await storageRef.put(file);
+            currentPicUrl = await snapshot.ref.getDownloadURL();
+        }
+
+        await db.collection('users').doc(user.uid).update({
+            nickname: nickname,
+            partnerEmail: partnerEmail,
+            profilePicUrl: currentPicUrl
+        });
+
+        alert('Profile updated successfully!');
+        window.location.href = 'dashboard.html';
+    });
+};
+
+// --- GRIEVANCE SUBMISSION ---
 const initGrievanceForm = () => {
     document.getElementById('grievanceForm').addEventListener('submit', async e => {
         e.preventDefault();
         const user = auth.currentUser;
-        if (!user) return;
-
         const userDoc = await db.collection('users').doc(user.uid).get();
-        if (!userDoc.exists) {
-            alert("Error: Your user profile is missing.");
-            return;
-        }
         const partnerEmail = userDoc.data().partnerEmail;
+        
         if (!partnerEmail) {
-            alert("Please set your partner's email in your profile before submitting a grievance.");
+            alert("Please set your partner's email in your profile first!");
             window.location.href = 'profile.html';
             return;
         }
         
-        // **BUG FIX LOGIC:** We no longer require the partner to be registered.
-        // We find their ID if they exist, but proceed even if they don't.
         const partnerQuery = await db.collection('users').where('email', '==', partnerEmail).get();
         const partnerId = partnerQuery.empty ? null : partnerQuery.docs[0].id;
 
@@ -183,55 +166,56 @@ const initGrievanceForm = () => {
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             senderId: user.uid,
             senderEmail: user.email,
-            receiverId: partnerId, // This can be null if partner hasn't registered
+            receiverId: partnerId,
             receiverEmail: partnerEmail,
             status: 'Pending'
         }).then(() => {
-            window.location.href = 'thankyou.html'; // Redirect to a confirmation page
+            window.location.href = 'thankyou.html';
         }).catch(error => alert(error.message));
     });
 };
 
-
-// --- DASHBOARD DISPLAY ---
+// --- DASHBOARD (REFACTORED) ---
 const loadDashboard = async () => {
     const user = auth.currentUser;
-    if (!user) return;
-
-    // Load user and partner data for the "Couple's Corner"
     const userDoc = await db.collection('users').doc(user.uid).get();
     const userData = userDoc.data();
     
     document.getElementById('welcome-user').innerText = `Welcome, ${userData.nickname || user.email}!`;
     
-    // Display user's own profile
-    const userProfile = document.getElementById('user-profile');
-    userProfile.querySelector('img').src = userData.profilePicUrl || 'https://via.placeholder.com/100';
-    userProfile.querySelector('p').textContent = userData.nickname || 'You';
+    const userProfileEl = document.getElementById('user-profile');
+    userProfileEl.querySelector('img').src = userData.profilePicUrl || 'https://via.placeholder.com/100/f7a0b8/d6336c?text=You';
+    userProfileEl.querySelector('p').textContent = userData.nickname || 'You';
     
-    // Display partner's profile
     if (userData.partnerEmail) {
         const partnerQuery = await db.collection('users').where('email', '==', userData.partnerEmail).get();
-        const partnerProfile = document.getElementById('partner-profile');
+        const partnerProfileEl = document.getElementById('partner-profile');
         if (!partnerQuery.empty) {
             const partnerData = partnerQuery.docs[0].data();
-            partnerProfile.querySelector('img').src = partnerData.profilePicUrl || 'https://via.placeholder.com/100';
-            partnerProfile.querySelector('p').textContent = partnerData.nickname || 'Partner';
-        } else {
-             partnerProfile.querySelector('p').textContent = '(Partner not registered)';
+            partnerProfileEl.querySelector('img').src = partnerData.profilePicUrl || 'https://via.placeholder.com/100/f7a0b8/d6336c?text=Love';
+            partnerProfileEl.querySelector('p').textContent = partnerData.nickname || 'Partner';
         }
     }
 
-    // Load sent and received grievances (real-time with onSnapshot)
     loadGrievances(user.uid, 'sent');
-    loadGrievances(user.uid, 'received');
+    loadGrievances(user.email, 'received'); // Use email for received to catch grievances sent before registration
+
+    // REFACTOR: Use event delegation for status updates
+    const receivedList = document.getElementById('received-grievances-list');
+    receivedList.addEventListener('submit', e => {
+        e.preventDefault();
+        if (e.target.matches('.status-update-form')) {
+            const form = e.target;
+            db.collection('grievances').doc(form.dataset.id).update({ status: form.status.value });
+        }
+    });
 };
 
-const loadGrievances = (uid, type) => {
+const loadGrievances = (identifier, type) => {
     const listEl = document.getElementById(`${type}-grievances-list`);
-    const queryField = type === 'sent' ? 'senderId' : 'receiverId';
+    const queryField = type === 'sent' ? 'senderId' : 'receiverEmail'; // Query by email for received
 
-    db.collection('grievances').where(queryField, "==", uid).orderBy("timestamp", "desc")
+    db.collection('grievances').where(queryField, "==", identifier).orderBy("timestamp", "desc")
         .onSnapshot(snapshot => {
             if (snapshot.empty) {
                 listEl.innerHTML = `<p>${type === 'sent' ? 'No grievances sent yet.' : 'Hooray! No grievances received.'}</p>`;
@@ -245,8 +229,8 @@ const loadGrievances = (uid, type) => {
                         <h4>${g.title}</h4>
                         <p>${g.description}</p>
                         <div class="meta">
-                            <span>From: ${g.senderEmail}</span><br>
-                            <span>To: ${g.receiverEmail}</span>
+                            <span>Mood: ${g.mood} | Severity: ${g.severity}</span><br>
+                            <span>From: ${g.senderEmail} | To: ${g.receiverEmail}</span>
                         </div>
                         <div class="grievance-status">Status: ${g.status}</div>
                         ${type === 'received' ? getStatusUpdateForm(doc.id, g.status) : ''}
@@ -256,9 +240,8 @@ const loadGrievances = (uid, type) => {
         });
 };
 
-const getStatusUpdateForm = (docId, currentStatus) => {
-    return `
-    <form class="status-update-form" data-id="${docId}" onsubmit="updateGrievanceStatus(event)">
+const getStatusUpdateForm = (docId, currentStatus) => `
+    <form class="status-update-form" data-id="${docId}">
         <select name="status">
             <option value="Pending" ${currentStatus === 'Pending' ? 'selected' : ''}>⏳ Pending</option>
             <option value="Working on it" ${currentStatus === 'Working on it' ? 'selected' : ''}>🛠️ Working on it</option>
@@ -266,13 +249,3 @@ const getStatusUpdateForm = (docId, currentStatus) => {
         </select>
         <button type="submit">Update</button>
     </form>`;
-};
-
-// Function to handle status update, needs to be in global scope to be called by onsubmit
-function updateGrievanceStatus(event) {
-    event.preventDefault();
-    const form = event.target;
-    const docId = form.dataset.id;
-    const newStatus = form.status.value;
-    db.collection('grievances').doc(docId).update({ status: newStatus });
-}
