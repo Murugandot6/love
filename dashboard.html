@@ -1,6 +1,3 @@
-<script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,15 +8,36 @@
 </head>
 <body>
     <div class="container dashboard-container">
-         <div class="header-nav">
+        <div class="header-nav">
             <h2 id="welcome-user">Welcome!</h2>
             <a href="#" id="logout" class="nav-link">Logout</a>
         </div>
-        <h3>Your Submitted Grievances</h3>
-        <div id="grievance-list">
+        <p id="partner-status">Loading partner info...</p>
+        
+        <div class="dashboard-main">
+            <!-- Column for grievances you've sent -->
+            <div class="dashboard-column">
+                <h3>Grievances You've Sent 📤</h3>
+                <div id="sent-grievances-list">
+                    <p>No grievances sent yet.</p>
+                </div>
             </div>
+
+            <!-- Column for grievances you've received -->
+            <div class="dashboard-column">
+                <h3>Grievances You've Received 📥</h3>
+                <div id="received-grievances-list">
+                    <p>No grievances received yet.</p>
+                </div>
+            </div>
+        </div>
+
         <a href="grievance.html" class="btn submit-btn">Submit a New Grievance</a>
     </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
