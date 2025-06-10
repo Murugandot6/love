@@ -8,27 +8,36 @@
 </head>
 <body>
     <div class="container dashboard-container">
-        <div class="header-nav">
+         <div class="header-nav">
             <h2 id="welcome-user">Welcome!</h2>
             <a href="#" id="logout" class="nav-link">Logout</a>
         </div>
-        <p id="partner-status">Loading partner info...</p>
+
+        <!-- Couple's Corner for Profile Info -->
+        <div class="couple-corner">
+            <div id="user-profile" class="couple-profile">
+                <img src="https://via.placeholder.com/100" alt="Your photo">
+                <p>You</p>
+            </div>
+            <div class="couple-heart">❤️</div>
+            <div id="partner-profile" class="couple-profile">
+                <img src="https://via.placeholder.com/100" alt="Partner's photo">
+                <p>Partner</p>
+            </div>
+        </div>
+        <a href="profile.html" class="btn edit-profile-btn">Edit Profile & Partner Info</a>
         
         <div class="dashboard-main">
-            <!-- Column for grievances you've sent -->
+            <!-- Sent Grievances -->
             <div class="dashboard-column">
                 <h3>Grievances You've Sent 📤</h3>
-                <div id="sent-grievances-list">
-                    <p>No grievances sent yet.</p>
-                </div>
+                <div id="sent-grievances-list"><p>Loading...</p></div>
             </div>
 
-            <!-- Column for grievances you've received -->
+            <!-- Received Grievances -->
             <div class="dashboard-column">
                 <h3>Grievances You've Received 📥</h3>
-                <div id="received-grievances-list">
-                    <p>No grievances received yet.</p>
-                </div>
+                <div id="received-grievances-list"><p>Loading...</p></div>
             </div>
         </div>
 
