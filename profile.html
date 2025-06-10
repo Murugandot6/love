@@ -1,35 +1,36 @@
-<script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-storage-compat.js"></script>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Your Profile</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/iconoir-icons/iconoir@main/css/iconoir.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h2>Edit Your Profile ✨</h2>
+        <h2><i class="iconoir-user-star"></i> Edit Your Profile</h2>
         <form id="profileForm">
             <div class="profile-pic-container">
                 <img id="profilePicPreview" src="https://via.placeholder.com/150" alt="Profile Picture Preview">
-                <label for="profilePicUpload">Change Picture</label>
+                <label for="profilePicUpload" class="btn-upload"><i class="iconoir-camera"></i> Change Picture</label>
                 <input type="file" id="profilePicUpload" accept="image/*">
             </div>
 
-            <label for="nickname">Nickname</label>
+            <label for="nickname"><i class="iconoir-user"></i> Nickname</label>
             <input type="text" id="nickname" placeholder="Your Nickname" required>
             
-            <label for="partnerEmail">Partner's Email</label>
+            <label for="partnerEmail"><i class="iconoir-at-sign-circle"></i> Partner's Email</label>
             <input type="email" id="partnerEmail" placeholder="Your Partner's Email" required>
 
-            <button type="submit" class="btn">Save Changes</button>
+            <button type="submit" class="btn"><i class="iconoir-save-action-floppy"></i> Save Changes</button>
         </form>
         <a href="dashboard.html" class="form-link">Back to Dashboard</a>
     </div>
+     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-storage-compat.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
