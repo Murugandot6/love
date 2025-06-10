@@ -4,44 +4,42 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Your Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/iconoir-icons/iconoir@main/css/iconoir.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container dashboard-container">
          <div class="header-nav">
             <h2 id="welcome-user">Welcome!</h2>
-            <a href="#" id="logout" class="nav-link">Logout</a>
+            <a href="#" id="logout" class="nav-link"><i class="iconoir-log-out"></i> Logout</a>
         </div>
 
-        <!-- Couple's Corner for Profile Info -->
         <div class="couple-corner">
             <div id="user-profile" class="couple-profile">
                 <img src="https://via.placeholder.com/100" alt="Your photo">
                 <p>You</p>
             </div>
-            <div class="couple-heart">❤️</div>
+            <div class="couple-heart"><i class="iconoir-heart-solid"></i></div>
             <div id="partner-profile" class="couple-profile">
                 <img src="https://via.placeholder.com/100" alt="Partner's photo">
                 <p>Partner</p>
             </div>
         </div>
-        <a href="profile.html" class="btn edit-profile-btn">Edit Profile & Partner Info</a>
+        <a href="profile.html" class="btn edit-profile-btn"><i class="iconoir-edit-pencil"></i> Edit Profile & Partner Info</a>
         
         <div class="dashboard-main">
-            <!-- Sent Grievances -->
             <div class="dashboard-column">
-                <h3>Grievances You've Sent 📤</h3>
+                <h3><i class="iconoir-send"></i> Grievances You've Sent</h3>
                 <div id="sent-grievances-list"><p>Loading...</p></div>
             </div>
 
-            <!-- Received Grievances -->
             <div class="dashboard-column">
-                <h3>Grievances You've Received 📥</h3>
+                <h3><i class="iconoir-inbox"></i> Grievances You've Received</h3>
                 <div id="received-grievances-list"><p>Loading...</p></div>
             </div>
         </div>
 
-        <a href="grievance.html" class="btn submit-btn">Submit a New Grievance</a>
+        <a href="grievance.html" class="btn submit-btn"><i class="iconoir-add-to-cart"></i> Submit a New Grievance</a>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
