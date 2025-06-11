@@ -10,19 +10,23 @@ const firebaseConfig = {
   appId: "1:472212537134:web:fc930ea95fa9b7ffc4c4bf"
 };
 
+
 // --- INITIALIZE FIREBASE SERVICES ---
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// --- NEW: AVATAR GENERATION FUNCTION ---
-// This function creates a unique avatar URL from DiceBear based on a seed string.
-const generateAvatarUrl = (seed) => {
-    // You can change 'micah' to other styles like 'bottts', 'adventurer', 'fun-emoji', etc.
-    // See DiceBear documentation for more styles.
-    const style = 'micah';
-    return `https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(seed)}`;
+// --- NEW: HEART EMOJI ASSIGNMENT LOGIC ---
+const heartEmojis = ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎'];
+
+// This function takes a user's ID and assigns a consistent emoji
+const assignUserIcon = (uid) => {
+    // A simple, consistent way to pick an emoji based on the user ID
+    const charCodeSum = uid.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    const index = charCodeSum % heartEmojis.length;
+    return heartEmojis[index];
 };
+
 
 // --- PAGE LOAD ROUTING ---
 document.addEventListener("DOMContentLoaded", () => {
@@ -58,7 +62,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-// --- AUTHENTICATION (MODIFIED FOR AVATARS) ---
+// --- AUTHENTICATION (MODIFIED FOR EMOJI ICONS) ---
 const initRegisterForm = () => {
     const form = document.getElementById('registerForm');
     form.addEventListener('submit', e => {
@@ -67,17 +71,19 @@ const initRegisterForm = () => {
         const email = form.email.value;
         const password = form.password.value;
         const partnerEmail = form.partnerEmail.value.toLowerCase();
-        
-        // --- MODIFIED: Generate an avatar URL on registration ---
-        const avatarUrl = generateAvatarUrl(nickname);
 
         auth.createUserWithEmailAndPassword(email, password)
-            .then(cred => db.collection('users').doc(cred.user.uid).set({
-                email: email,
-                nickname: nickname,
-                partnerEmail: partnerEmail,
-                profilePicUrl: avatarUrl // --- MODIFIED: Save the new avatar URL ---
-            }))
+            .then(cred => {
+                // MODIFIED: Assign a user icon on registration
+                const userIcon = assignUserIcon(cred.user.uid);
+                
+                return db.collection('users').doc(cred.user.uid).set({
+                    email: email,
+                    nickname: nickname,
+                    partnerEmail: partnerEmail,
+                    userIcon: userIcon // MODIFIED: Save the icon to the database
+                });
+            })
             .then(() => {
                 alert('Registration successful! Please log in.');
                 window.location.href = 'login.html';
@@ -98,7 +104,7 @@ const initLoginForm = () => {
     });
 };
 
-// --- PROFILE MANAGEMENT (MODIFIED FOR AVATARS) ---
+// --- PROFILE MANAGEMENT (SIMPLIFIED) ---
 const loadProfilePage = async () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -110,11 +116,8 @@ const loadProfilePage = async () => {
     document.getElementById('nickname').value = userData.nickname || '';
     document.getElementById('partnerEmail').value = userData.partnerEmail || '';
     
-    // --- MODIFIED: Use DiceBear avatar as a fallback ---
-    document.getElementById('profilePicPreview').src = userData.profilePicUrl || generateAvatarUrl(userData.nickname || 'user');
-    
-    // Hide the file upload button as it's not used
-    document.querySelector('.btn-upload').style.display = 'none';
+    // MODIFIED: Display the assigned emoji icon
+    document.getElementById('profile-icon-preview').textContent = userData.userIcon || '❤️';
 };
 
 const initProfileForm = () => {
@@ -126,20 +129,16 @@ const initProfileForm = () => {
         const nickname = document.getElementById('nickname').value;
         const partnerEmail = document.getElementById('partnerEmail').value.toLowerCase();
         
-        // --- MODIFIED: Generate a new avatar URL when the nickname changes ---
-        const newAvatarUrl = generateAvatarUrl(nickname);
-
+        // MODIFIED: This form no longer handles icons, only text fields.
         await db.collection('users').doc(user.uid).update({
             nickname: nickname,
             partnerEmail: partnerEmail,
-            profilePicUrl: newAvatarUrl // --- MODIFIED: Update the avatar URL ---
         });
 
         alert('Profile updated successfully!');
         window.location.href = 'dashboard.html';
     });
 };
-
 
 // --- GRIEVANCE SUBMISSION (NO CHANGES) ---
 const initGrievanceForm = () => {
@@ -177,7 +176,7 @@ const initGrievanceForm = () => {
     });
 };
 
-// --- DASHBOARD (MODIFIED FOR AVATARS) ---
+// --- DASHBOARD (MODIFIED FOR EMOJI ICONS) ---
 const loadDashboard = async () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -188,22 +187,23 @@ const loadDashboard = async () => {
     
     document.getElementById('welcome-user').innerText = `Welcome, ${userData.nickname || user.email}!`;
     
-    const userProfileEl = document.getElementById('user-profile');
-    // --- MODIFIED: Use DiceBear avatar as a fallback ---
-    userProfileEl.querySelector('img').src = userData.profilePicUrl || generateAvatarUrl(userData.nickname || 'user');
-    userProfileEl.querySelector('p').textContent = userData.nickname || 'You';
+    // MODIFIED: Display user's assigned emoji
+    document.getElementById('user-icon').textContent = userData.userIcon || '❤️';
+    document.querySelector('#user-profile p').textContent = userData.nickname || 'You';
     
     if (userData.partnerEmail) {
         const partnerQuery = await db.collection('users').where('email', '==', userData.partnerEmail).get();
-        const partnerProfileEl = document.getElementById('partner-profile');
+        const partnerIconEl = document.getElementById('partner-icon');
+        const partnerNameEl = document.querySelector('#partner-profile p');
+
         if (!partnerQuery.empty) {
             const partnerData = partnerQuery.docs[0].data();
-            // --- MODIFIED: Use DiceBear avatar for partner ---
-            partnerProfileEl.querySelector('img').src = partnerData.profilePicUrl || generateAvatarUrl(partnerData.nickname || 'partner');
-            partnerProfileEl.querySelector('p').textContent = partnerData.nickname || 'Partner';
+            // MODIFIED: Display partner's assigned emoji
+            partnerIconEl.textContent = partnerData.userIcon || '💜';
+            partnerNameEl.textContent = partnerData.nickname || 'Partner';
         } else {
-             partnerProfileEl.querySelector('img').src = generateAvatarUrl('partner');
-             partnerProfileEl.querySelector('p').textContent = 'Partner';
+            partnerIconEl.textContent = '❔';
+            partnerNameEl.textContent = 'Partner';
         }
     }
 
