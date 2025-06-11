@@ -1,46 +1,64 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Submit a Grievance</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/iconoir-icons/iconoir@main/css/iconoir.min.css">
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div class="container grievance-container">
-        <div class="header-nav">
-            <a href="dashboard.html" class="nav-link"><i class="iconoir-dashboard-dots"></i> View Dashboard</a>
-            <a href="#" id="logout" class="nav-link"><i class="iconoir-log-out"></i> Logout</a>
-        </div>
-        <h2>Submit a Grievance 🥀</h2>
-        <form id="grievanceForm">
-            <input type="text" id="title" placeholder="Title" required>
-            <textarea id="description" placeholder="What's bothering you?" required></textarea>
-            <div class="select-wrapper">
-                <label for="mood"><i class="iconoir-emoji"></i> Mood:</label>
-                <select id="mood" required>
-                    <option value="Angry">😡 Angry</option>
-                    <option value="Sad">😢 Sad</option>
-                    <option value="Neutral">😐 Neutral</option>
-                    <option value="Happy">😊 Happy</option>
-                </select>
-            </div>
-            <div class="select-wrapper">
-                <label for="severity"><i class="iconoir-warning-triangle"></i> Severity:</label>
-                <select id="severity" required>
-                    <option value="Low">A chunky kitkat would fix this 👹</option>
-                    <option value="High">Needs immediate attention</option>
-                    <option value="Medium">Not a big deal</option>
-                </select>
-            </div>
-            <button type="submit" class="btn submit-btn"><i class="iconoir-send"></i> Submit 💌</button>
-        </form>
-    </div>
+<!-- Previous HTML remains the same until the script section -->
+<script>
+  // Initialize Firebase
+  const firebaseConfig = {
+    apiKey: "AIzaSyA8QfLoifA2-DjldYaMBeIge1D6TbRpBWw",
+    authDomain: "summa-57ad5.firebaseapp.com",
+    projectId: "summa-57ad5",
+    storageBucket: "summa-57ad5.appspot.com",
+    messagingSenderId: "472212537134",
+    appId: "1:472212537134:web:fc930ea95fa9b7ffc4c4bf"
+  };
+  
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
 
-    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
-    <script src="script.js"></script>
-</body>
-</html>
+  document.getElementById('grievanceForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const user = auth.currentUser;
+    if (!user) {
+      alert('Please login first');
+      return window.location.href = 'login.html';
+    }
+
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="iconoir-loading"></i> Submitting...';
+
+    try {
+      // Get user data first
+      const userDoc = await db.collection('users').doc(user.uid).get();
+      if (!userDoc.exists) {
+        alert('Please complete your profile first');
+        return window.location.href = 'profile.html';
+      }
+
+      const userData = userDoc.data();
+      
+      // Prepare grievance data
+      const grievanceData = {
+        title: document.getElementById('title').value.trim(),
+        description: document.getElementById('description').value.trim(),
+        mood: document.getElementById('mood').value,
+        severity: document.getElementById('severity').value,
+        senderId: user.uid,
+        senderNickname: userData.nickname || user.email,
+        receiverEmail: userData.partnerEmail,
+        status: 'Pending',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      // Add to Firestore
+      await db.collection('grievances').add(grievanceData);
+      window.location.href = 'thankyou.html';
+      
+    } catch (error) {
+      console.error('Submission error:', error);
+      alert('Error submitting: ' + error.message);
+      btn.disabled = false;
+      btn.innerHTML = '<i class="iconoir-send"></i> Submit 💌';
+    }
+  });
+</script>
