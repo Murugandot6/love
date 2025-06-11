@@ -10,14 +10,12 @@ const firebaseConfig = {
 };
 
 // --- INITIALIZE FIREBASE SERVICES ---
-// This is the correct initialization for the 'compat' scripts you are using in your HTML.
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
 // --- HEART EMOJI ASSIGNMENT LOGIC ---
 const heartEmojis = ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎'];
-
 const assignUserIcon = (uid) => {
     const charCodeSum = uid.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
     const index = charCodeSum % heartEmojis.length;
@@ -28,20 +26,22 @@ const assignUserIcon = (uid) => {
 document.addEventListener("DOMContentLoaded", () => {
     auth.onAuthStateChanged(user => {
         const page = window.location.pathname.split("/").pop();
-        const protectedPages = ["dashboard.html", "grievance.html", "profile.html"];
+        const isProtected = ["dashboard.html", "grievance.html", "profile.html"].includes(page);
         
         if (user) {
             console.log("User is logged in:", user.uid);
-            if (page === 'login.html' || page === 'register.html' || page === 'index.html' || page === '') {
+            const isAuthPage = ["login.html", "register.html", "index.html", ""].includes(page);
+            if (isAuthPage) {
                 window.location.href = 'dashboard.html';
-            } else if (protectedPages.includes(page)) {
+            } else if (isProtected) {
+                // Attach functions for protected pages
                 if (page === 'dashboard.html') loadDashboard();
                 if (page === 'profile.html') loadProfilePage();
                 if (page === 'grievance.html') initGrievanceForm();
             }
         } else {
             console.log("No user is logged in.");
-            if (protectedPages.includes(page)) {
+            if (isProtected) {
                 window.location.href = 'login.html';
             }
         }
@@ -72,7 +72,6 @@ const initRegisterForm = () => {
 
         auth.createUserWithEmailAndPassword(email, password)
             .then(cred => {
-                console.log("User created in Auth, now saving to Firestore...");
                 const userIcon = assignUserIcon(cred.user.uid);
                 return db.collection('users').doc(cred.user.uid).set({
                     email: email,
@@ -82,7 +81,6 @@ const initRegisterForm = () => {
                 });
             })
             .then(() => {
-                console.log("User data saved successfully to Firestore.");
                 alert('Registration successful! Please log in.');
                 window.location.href = 'login.html';
             })
@@ -121,14 +119,14 @@ const loadProfilePage = async () => {
             document.getElementById('nickname').value = userData.nickname || '';
             document.getElementById('partnerEmail').value = userData.partnerEmail || '';
             document.getElementById('profile-icon-preview').textContent = userData.userIcon || '❤️';
+            initProfileForm(); 
         } else {
             console.error("Profile Error: User document not found in Firestore!");
             alert("Could not load your profile data. Please try registering again.");
         }
-        initProfileForm();
     } catch (error) {
         console.error("Error loading profile:", error);
-        alert("An error occurred while loading your profile.");
+        alert(`An error occurred: ${error.message}`);
     }
 };
 
@@ -144,10 +142,7 @@ const initProfileForm = () => {
         const partnerEmail = document.getElementById('partnerEmail').value.toLowerCase();
         
         try {
-            await db.collection('users').doc(user.uid).update({
-                nickname: nickname,
-                partnerEmail: partnerEmail,
-            });
+            await db.collection('users').doc(user.uid).update({ nickname, partnerEmail });
             alert('Profile updated successfully!');
             window.location.href = 'dashboard.html';
         } catch (error) {
@@ -180,15 +175,14 @@ const initGrievanceForm = () => {
             
             const userData = userDoc.data();
             const partnerEmail = userData.partnerEmail;
-
             const partnerQuery = await db.collection('users').where('email', '==', partnerEmail).get();
             const partnerId = partnerQuery.empty ? null : partnerQuery.docs[0].id;
 
             await db.collection('grievances').add({
-                title: document.getElementById('title').value,
-                description: document.getElementById('description').value,
-                mood: document.getElementById('mood').value,
-                severity: document.getElementById('severity').value,
+                title: form.title.value,
+                description: form.description.value,
+                mood: form.mood.value,
+                severity: form.severity.value,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                 senderId: user.uid,
                 senderNickname: userData.nickname,
@@ -196,7 +190,6 @@ const initGrievanceForm = () => {
                 receiverEmail: partnerEmail,
                 status: 'Pending'
             });
-
             window.location.href = 'thankyou.html';
         } catch (error) {
             console.error("Grievance Submission Error:", error);
@@ -215,8 +208,8 @@ const loadDashboard = async () => {
     try {
         const userDoc = await db.collection('users').doc(user.uid).get();
         if (!userDoc.exists) {
-            console.error("Dashboard Error: Current user document not found in Firestore!");
-            document.getElementById('welcome-user').innerText = `Welcome, ${user.email}! (Profile data not found)`;
+            alert("Your profile data is missing. Please register again.");
+            auth.signOut();
             return;
         }
         
@@ -229,14 +222,13 @@ const loadDashboard = async () => {
             const partnerQuery = await db.collection('users').where('email', '==', userData.partnerEmail).get();
             const partnerIconEl = document.getElementById('partner-icon');
             const partnerNameEl = document.querySelector('#partner-profile p');
-
             if (!partnerQuery.empty) {
                 const partnerData = partnerQuery.docs[0].data();
                 partnerIconEl.textContent = partnerData.userIcon || '💜';
                 partnerNameEl.textContent = partnerData.nickname || 'Partner';
             } else {
                 partnerIconEl.textContent = '❔';
-                partnerNameEl.textContent = 'Partner (Not registered)';
+                partnerNameEl.textContent = 'Partner (Unregistered)';
             }
         }
 
@@ -255,6 +247,7 @@ const loadDashboard = async () => {
         }
     } catch (error) {
         console.error("Error loading dashboard:", error);
+        alert(`An error occurred: ${error.message}`);
     }
 };
 
@@ -265,10 +258,6 @@ const loadGrievances = (identifier, type) => {
 
     db.collection('grievances').where(queryField, "==", identifier).orderBy("timestamp", "desc")
         .onSnapshot(snapshot => {
-            if (snapshot.empty) {
-                listEl.innerHTML = `<p>${type === 'sent' ? 'No grievances sent yet.' : 'Hooray! No grievances received.'}</p>`;
-                return;
-            }
             let html = '';
             snapshot.forEach(doc => {
                 const g = doc.data();
@@ -284,10 +273,10 @@ const loadGrievances = (identifier, type) => {
                         ${type === 'received' ? getStatusUpdateForm(doc.id, g.status) : ''}
                     </div>`;
             });
-            listEl.innerHTML = html;
+            listEl.innerHTML = html || `<p>${type === 'sent' ? 'No grievances sent yet.' : 'Hooray! No grievances received.'}</p>`;
         }, error => {
             console.error(`Error loading ${type} grievances:`, error);
-            listEl.innerHTML = `<p style="color: red;">Error: Could not load grievances. Check Firestore rules.</p>`;
+            listEl.innerHTML = `<p style="color: red;">Error: Could not load grievances. Check permissions.</p>`;
         });
 };
 
