@@ -1,22 +1,16 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
+// --- Your Firebase Configuration ---
+// This uses the exact keys you provided.
 const firebaseConfig = {
-  apiKey: "AIzaSyA8QfLoifA2-DjldYaMBeIge1D6TbRpBWw",
-  authDomain: "summa-57ad5.firebaseapp.com",
-  projectId: "summa-57ad5",
-  storageBucket: "summa-57ad5.firebasestorage.app",
-  messagingSenderId: "472212537134",
-  appId: "1:472212537134:web:fc930ea95fa9b7ffc4c4bf"
+    apiKey: "AIzaSyA8QfLoifA2-DjldYaMBeIge1D6TbRpBWw",
+    authDomain: "summa-57ad5.firebaseapp.com",
+    projectId: "summa-57ad5",
+    storageBucket: "summa-57ad5.firebasestorage.app", // Note: A minor correction to the domain name is often needed.
+    messagingSenderId: "472212537134",
+    appId: "1:472212537134:web:fc930ea95fa9b7ffc4c4bf"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-
 // --- INITIALIZE FIREBASE SERVICES ---
+// This is the correct initialization for the 'compat' scripts you are using in your HTML.
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
@@ -53,14 +47,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Attach listeners only if the corresponding form exists on the page
     const page = window.location.pathname.split("/").pop();
     if (page === 'register.html') initRegisterForm();
     if (page === 'login.html') initLoginForm();
     
-    // Universal logout listener
     document.body.addEventListener('click', e => {
-        // Use .closest to handle clicks on the icon inside the link
         if (e.target.closest('#logout')) {
             e.preventDefault();
             auth.signOut().then(() => window.location.href = 'login.html');
@@ -83,7 +74,6 @@ const initRegisterForm = () => {
             .then(cred => {
                 console.log("User created in Auth, now saving to Firestore...");
                 const userIcon = assignUserIcon(cred.user.uid);
-                // This is the step that was likely failing silently.
                 return db.collection('users').doc(cred.user.uid).set({
                     email: email,
                     nickname: nickname,
@@ -97,7 +87,6 @@ const initRegisterForm = () => {
                 window.location.href = 'login.html';
             })
             .catch(err => {
-                // FIX: This will now show you Firestore errors (like "Permission Denied")
                 console.error("Registration Error:", err);
                 alert(`Error: ${err.message}`);
             });
@@ -127,18 +116,16 @@ const loadProfilePage = async () => {
 
     try {
         const userDoc = await db.collection('users').doc(user.uid).get();
-        // FIX: Check if the user document actually exists. This is a critical bug fix.
         if (userDoc.exists) {
             const userData = userDoc.data();
             document.getElementById('nickname').value = userData.nickname || '';
             document.getElementById('partnerEmail').value = userData.partnerEmail || '';
             document.getElementById('profile-icon-preview').textContent = userData.userIcon || '❤️';
         } else {
-            // This happens if the user was created in Auth but their data failed to save to Firestore.
             console.error("Profile Error: User document not found in Firestore!");
             alert("Could not load your profile data. Please try registering again.");
         }
-        initProfileForm(); // Initialize form listener after data is loaded
+        initProfileForm();
     } catch (error) {
         console.error("Error loading profile:", error);
         alert("An error occurred while loading your profile.");
@@ -185,7 +172,6 @@ const initGrievanceForm = () => {
 
         try {
             const userDoc = await db.collection('users').doc(user.uid).get();
-            // FIX: Another critical check to ensure user data exists before proceeding.
             if (!userDoc.exists || !userDoc.data().partnerEmail) {
                 alert("Please set your partner's email in your profile first!");
                 window.location.href = 'profile.html';
@@ -205,7 +191,7 @@ const initGrievanceForm = () => {
                 severity: document.getElementById('severity').value,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                 senderId: user.uid,
-                senderNickname: userData.nickname, // FIX: Store sender's name
+                senderNickname: userData.nickname,
                 receiverId: partnerId,
                 receiverEmail: partnerEmail,
                 status: 'Pending'
@@ -228,7 +214,6 @@ const loadDashboard = async () => {
 
     try {
         const userDoc = await db.collection('users').doc(user.uid).get();
-        // FIX: A final critical check for the user's own data.
         if (!userDoc.exists) {
             console.error("Dashboard Error: Current user document not found in Firestore!");
             document.getElementById('welcome-user').innerText = `Welcome, ${user.email}! (Profile data not found)`;
@@ -236,7 +221,6 @@ const loadDashboard = async () => {
         }
         
         const userData = userDoc.data();
-        // FIX: Display nickname, but fall back to email if nickname doesn't exist.
         document.getElementById('welcome-user').innerText = `Welcome, ${userData.nickname || user.email}!`;
         document.getElementById('user-icon').textContent = userData.userIcon || '❤️';
         document.querySelector('#user-profile p').textContent = userData.nickname || 'You';
@@ -249,11 +233,9 @@ const loadDashboard = async () => {
             if (!partnerQuery.empty) {
                 const partnerData = partnerQuery.docs[0].data();
                 partnerIconEl.textContent = partnerData.userIcon || '💜';
-                // FIX: Show partner's actual nickname.
                 partnerNameEl.textContent = partnerData.nickname || 'Partner';
             } else {
                 partnerIconEl.textContent = '❔';
-                // FIX: Make it clear the partner hasn't registered yet.
                 partnerNameEl.textContent = 'Partner (Not registered)';
             }
         }
@@ -304,7 +286,6 @@ const loadGrievances = (identifier, type) => {
             });
             listEl.innerHTML = html;
         }, error => {
-            // FIX: This will catch and display errors if you don't have permission to read grievances.
             console.error(`Error loading ${type} grievances:`, error);
             listEl.innerHTML = `<p style="color: red;">Error: Could not load grievances. Check Firestore rules.</p>`;
         });
