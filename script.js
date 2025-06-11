@@ -1,5 +1,4 @@
 // --- Your Firebase Configuration ---
-// This uses the exact keys you provided.
 const firebaseConfig = {
     apiKey: "AIzaSyA8QfLoifA2-DjldYaMBeIge1D6TbRpBWw",
     authDomain: "summa-57ad5.firebaseapp.com",
@@ -30,17 +29,14 @@ document.addEventListener("DOMContentLoaded", () => {
         
         if (user) {
             const isAuthPage = ["login.html", "register.html", "index.html", ""].includes(page);
-            if (isAuthPage) {
-                window.location.href = 'dashboard.html';
-            } else if (isProtected) {
+            if (isAuthPage) { window.location.href = 'dashboard.html'; } 
+            else if (isProtected) {
                 if (page === 'dashboard.html') loadDashboard();
                 if (page === 'profile.html') loadProfilePage();
                 if (page === 'grievance.html') initGrievanceForm();
             }
         } else {
-            if (isProtected) {
-                window.location.href = 'login.html';
-            }
+            if (isProtected) { window.location.href = 'login.html'; }
         }
     });
 
@@ -56,7 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-// --- AUTHENTICATION (TEST VERSION) ---
+// --- AUTHENTICATION ---
 const initRegisterForm = () => {
     const form = document.getElementById('registerForm');
     if (!form) return;
@@ -67,13 +63,9 @@ const initRegisterForm = () => {
         const password = form.password.value;
         const partnerEmail = form.partnerEmail.value.toLowerCase();
 
-        console.log("REGISTER TEST: Starting registration process...");
-
         auth.createUserWithEmailAndPassword(email, password)
             .then(cred => {
-                console.log("REGISTER TEST: Authentication user created. Now creating Firestore document...");
                 const userIcon = assignUserIcon(cred.user.uid);
-                // This is the step that was failing
                 return db.collection('users').doc(cred.user.uid).set({
                     email: email,
                     nickname: nickname,
@@ -82,29 +74,22 @@ const initRegisterForm = () => {
                 });
             })
             .then(() => {
-                // --- THIS IS THE PROOF ---
-                // If you see this message, the NEW code is working.
-                console.log("REGISTER TEST: Firestore document created successfully.");
-                alert('SUCCESS! The NEW registration code is working! Welcome!');
+                alert('Registration successful! Welcome!');
                 window.location.href = 'dashboard.html';
             })
             .catch(err => {
-                // This will now catch any error, including Firestore permission errors.
-                console.error("A CRITICAL REGISTRATION ERROR OCCURRED:", err);
-                alert(`Registration Failed: ${err.message}`);
+                console.error("Registration Error:", err);
+                alert(`Error: ${err.message}`);
             });
     });
 };
 
 const initLoginForm = () => {
-    // ... your existing login form code is fine, leave it as is ...
     const form = document.getElementById('loginForm');
     if (!form) return;
     form.addEventListener('submit', e => {
         e.preventDefault();
-        const email = form.email.value; 
-        const password = form.password.value;
-        auth.signInWithEmailAndPassword(email, password)
+        auth.signInWithEmailAndPassword(form.email.value, form.password.value)
             .then(() => window.location.href = 'dashboard.html')
             .catch(err => {
                 console.error("Login Failed:", err);
@@ -112,16 +97,12 @@ const initLoginForm = () => {
             });
     });
 };
+
 // --- PROFILE PAGE ---
 const loadProfilePage = () => {
     const user = auth.currentUser;
     if (!user) return;
-
-    // --- FIX 2: Attach the form listener IMMEDIATELY. ---
-    // This guarantees the "Save" button will always work, even for new users.
     initProfileForm(user); 
-
-    // Now, just try to load existing data to fill the form.
     db.collection('users').doc(user.uid).get().then(doc => {
         if (doc.exists) {
             const userData = doc.data();
@@ -129,12 +110,9 @@ const loadProfilePage = () => {
             document.getElementById('partnerEmail').value = userData.partnerEmail || '';
             document.getElementById('profile-icon-preview').textContent = userData.userIcon || '❤️';
         } else {
-            console.warn("User document doesn't exist yet. It will be created on first save.");
             document.getElementById('profile-icon-preview').textContent = assignUserIcon(user.uid);
         }
-    }).catch(error => {
-        console.error("Error loading profile data:", error);
-    });
+    }).catch(error => console.error("Error loading profile data:", error));
 };
 
 const initProfileForm = (user) => {
@@ -142,15 +120,10 @@ const initProfileForm = (user) => {
     if (!form) return;
     form.addEventListener('submit', async e => {
         e.preventDefault();
-        
         const nickname = document.getElementById('nickname').value;
         const partnerEmail = document.getElementById('partnerEmail').value.toLowerCase();
-        
         try {
-            // --- FIX 3: Use .set({ merge: true }) instead of .update() ---
-            // This will CREATE the document if it's new, or UPDATE it if it exists.
             await db.collection('users').doc(user.uid).set({ nickname, partnerEmail }, { merge: true });
-            
             alert('Profile updated successfully!');
             window.location.href = 'dashboard.html';
         } catch (error) {
@@ -159,7 +132,6 @@ const initProfileForm = (user) => {
         }
     });
 };
-
 
 // --- GRIEVANCE SUBMISSION ---
 const initGrievanceForm = () => {
@@ -171,60 +143,48 @@ const initGrievanceForm = () => {
         e.preventDefault();
         const user = auth.currentUser;
         if (!user) return;
-
         submitButton.disabled = true;
         submitButton.innerHTML = '<i class="iconoir-clock"></i> Submitting...';
-
         try {
             const userDoc = await db.collection('users').doc(user.uid).get();
-            // --- FIX 4: MORE ROBUST CHECK ---
-            // Ensure the partner's email is not empty.
             if (!userDoc.exists() || !userDoc.data().partnerEmail || userDoc.data().partnerEmail.trim() === '') {
                 alert("Please set your partner's email in your profile before submitting a grievance!");
                 window.location.href = 'profile.html';
-                return; // Stop execution here
+                return;
             }
-            
             const userData = userDoc.data();
             const partnerEmail = userData.partnerEmail;
             const partnerQuery = await db.collection('users').where('email', '==', partnerEmail).get();
             const partnerId = partnerQuery.empty ? null : partnerQuery.docs[0].id;
-
             await db.collection('grievances').add({
-                title: form.title.value,
-                description: form.description.value,
-                mood: form.mood.value,
-                severity: form.severity.value,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                senderId: user.uid,
-                senderNickname: userData.nickname,
-                receiverId: partnerId,
-                receiverEmail: partnerEmail,
-                status: 'Pending'
+                title: form.title.value, description: form.description.value, mood: form.mood.value, severity: form.severity.value,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(), senderId: user.uid, senderNickname: userData.nickname,
+                receiverId: partnerId, receiverEmail: partnerEmail, status: 'Pending'
             });
             window.location.href = 'thankyou.html';
         } catch (error) {
             console.error("Grievance Submission Error:", error);
             alert(`Failed to send grievance: ${error.message}`);
-            // Re-enable the button on failure
             submitButton.disabled = false;
             submitButton.innerHTML = '<i class="iconoir-send"></i> Submit 💌';
         }
     });
 };
 
-
-// --- DASHBOARD --- (No changes needed here, left for completeness)
+// --- DASHBOARD ---
 const loadDashboard = async () => {
     const user = auth.currentUser;
     if (!user) return;
 
     try {
         const userDoc = await db.collection('users').doc(user.uid).get();
-        if (!userDoc.exists) {
-            alert("Your profile data is missing. Please log out and register again.");
-            auth.signOut();
-            return;
+        // --- FINAL FIX IS HERE ---
+        // This check was causing the frustrating loop.
+        if (!userDoc.exists()) {
+            // Instead of logging out, we now send the user to the place where they can fix the problem.
+            alert("Your profile data is missing. Let's create it now!");
+            window.location.href = 'profile.html'; // Go to the profile page
+            return; // Stop the rest of the function from running.
         }
         
         const userData = userDoc.data();
@@ -245,20 +205,8 @@ const loadDashboard = async () => {
                 partnerNameEl.textContent = 'Partner (Unregistered)';
             }
         }
-
         loadGrievances(user.uid, 'sent');
         loadGrievances(user.email, 'received');
-
-        const receivedList = document.getElementById('received-grievances-list');
-        if (receivedList) {
-            receivedList.addEventListener('submit', e => {
-                e.preventDefault();
-                if (e.target.matches('.status-update-form')) {
-                    const form = e.target;
-                    db.collection('grievances').doc(form.dataset.id).update({ status: form.status.value });
-                }
-            });
-        }
     } catch (error) {
         console.error("Error loading dashboard:", error);
         alert(`An error occurred: ${error.message}`);
@@ -269,37 +217,18 @@ const loadGrievances = (identifier, type) => {
     const listEl = document.getElementById(`${type}-grievances-list`);
     if (!listEl) return;
     const queryField = type === 'sent' ? 'senderId' : 'receiverEmail';
-
     db.collection('grievances').where(queryField, "==", identifier).orderBy("timestamp", "desc")
         .onSnapshot(snapshot => {
             let html = '';
             snapshot.forEach(doc => {
                 const g = doc.data();
-                html += `
-                    <div class="grievance-item">
-                        <h4>${g.title}</h4>
-                        <p>${g.description}</p>
-                        <div class="meta">
-                            <span>Mood: ${g.mood} | Severity: ${g.severity}</span><br>
-                            <span>Sent on: ${g.timestamp ? g.timestamp.toDate().toLocaleDateString() : 'N/A'}</span>
-                        </div>
-                        <div class="grievance-status">Status: ${g.status}</div>
-                        ${type === 'received' ? getStatusUpdateForm(doc.id, g.status) : ''}
-                    </div>`;
+                html += `<div class="grievance-item"><h4>${g.title}</h4><p>${g.description}</p><div class="meta"><span>Mood: ${g.mood} | Severity: ${g.severity}</span><br><span>Sent on: ${g.timestamp ? g.timestamp.toDate().toLocaleDateString() : 'N/A'}</span></div><div class="grievance-status">Status: ${g.status}</div>${type === 'received' ? getStatusUpdateForm(doc.id, g.status) : ''}</div>`;
             });
             listEl.innerHTML = html || `<p>${type === 'sent' ? 'No grievances sent yet.' : 'Hooray! No grievances received.'}</p>`;
         }, error => {
             console.error(`Error loading ${type} grievances:`, error);
-            listEl.innerHTML = `<p style="color: red;">Error: Could not load grievances. Check permissions.</p>`;
+            listEl.innerHTML = `<p style="color: red;">Error: Could not load grievances.</p>`;
         });
 };
 
-const getStatusUpdateForm = (docId, currentStatus) => `
-    <form class="status-update-form" data-id="${docId}">
-        <select name="status">
-            <option value="Pending" ${currentStatus === 'Pending' ? 'selected' : ''}>⏳ Pending</option>
-            <option value="Working on it" ${currentStatus === 'Working on it' ? 'selected' : ''}>🛠️ Working on it</option>
-            <option value="Resolved" ${currentStatus === 'Resolved' ? 'selected' : ''}>✅ Resolved</option>
-        </select>
-        <button type="submit">Update</button>
-    </form>`;
+const getStatusUpdateForm = (docId, currentStatus) => `<form class="status-update-form" data-id="${docId}"><select name="status"><option value="Pending" ${currentStatus === 'Pending' ? 'selected' : ''}>⏳ Pending</option><option value="Working on it" ${currentStatus === 'Working on it' ? 'selected' : ''}>🛠️ Working on it</option><option value="Resolved" ${currentStatus === 'Resolved' ? 'selected' : ''}>✅ Resolved</option></select><button type="submit">Update</button></form>`;
