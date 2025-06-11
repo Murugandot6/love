@@ -10,23 +10,19 @@ const firebaseConfig = {
   appId: "1:472212537134:web:fc930ea95fa9b7ffc4c4bf"
 };
 
-
 // --- INITIALIZE FIREBASE SERVICES ---
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// --- NEW: HEART EMOJI ASSIGNMENT LOGIC ---
+// --- HEART EMOJI ASSIGNMENT LOGIC ---
 const heartEmojis = ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎'];
 
-// This function takes a user's ID and assigns a consistent emoji
 const assignUserIcon = (uid) => {
-    // A simple, consistent way to pick an emoji based on the user ID
     const charCodeSum = uid.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
     const index = charCodeSum % heartEmojis.length;
     return heartEmojis[index];
 };
-
 
 // --- PAGE LOAD ROUTING ---
 document.addEventListener("DOMContentLoaded", () => {
@@ -62,7 +58,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-// --- AUTHENTICATION (MODIFIED FOR EMOJI ICONS) ---
+// --- AUTHENTICATION ---
 const initRegisterForm = () => {
     const form = document.getElementById('registerForm');
     form.addEventListener('submit', e => {
@@ -74,14 +70,12 @@ const initRegisterForm = () => {
 
         auth.createUserWithEmailAndPassword(email, password)
             .then(cred => {
-                // MODIFIED: Assign a user icon on registration
                 const userIcon = assignUserIcon(cred.user.uid);
-                
                 return db.collection('users').doc(cred.user.uid).set({
                     email: email,
                     nickname: nickname,
                     partnerEmail: partnerEmail,
-                    userIcon: userIcon // MODIFIED: Save the icon to the database
+                    userIcon: userIcon
                 });
             })
             .then(() => {
@@ -104,7 +98,7 @@ const initLoginForm = () => {
     });
 };
 
-// --- PROFILE MANAGEMENT (SIMPLIFIED) ---
+// --- PROFILE MANAGEMENT ---
 const loadProfilePage = async () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -115,8 +109,6 @@ const loadProfilePage = async () => {
 
     document.getElementById('nickname').value = userData.nickname || '';
     document.getElementById('partnerEmail').value = userData.partnerEmail || '';
-    
-    // MODIFIED: Display the assigned emoji icon
     document.getElementById('profile-icon-preview').textContent = userData.userIcon || '❤️';
 };
 
@@ -129,7 +121,6 @@ const initProfileForm = () => {
         const nickname = document.getElementById('nickname').value;
         const partnerEmail = document.getElementById('partnerEmail').value.toLowerCase();
         
-        // MODIFIED: This form no longer handles icons, only text fields.
         await db.collection('users').doc(user.uid).update({
             nickname: nickname,
             partnerEmail: partnerEmail,
@@ -140,43 +131,57 @@ const initProfileForm = () => {
     });
 };
 
-// --- GRIEVANCE SUBMISSION (NO CHANGES) ---
+// --- GRIEVANCE SUBMISSION (FIXED) ---
 const initGrievanceForm = () => {
-    document.getElementById('grievanceForm').addEventListener('submit', async e => {
+    const form = document.getElementById('grievanceForm');
+    form.addEventListener('submit', async e => {
         e.preventDefault();
         const user = auth.currentUser;
         if (!user) return;
-        
-        const userDoc = await db.collection('users').doc(user.uid).get();
-        const partnerEmail = userDoc.data().partnerEmail;
-        
-        if (!partnerEmail) {
-            alert("Please set your partner's email in your profile first!");
-            window.location.href = 'profile.html';
-            return;
-        }
-        
-        const partnerQuery = await db.collection('users').where('email', '==', partnerEmail).get();
-        const partnerId = partnerQuery.empty ? null : partnerQuery.docs[0].id;
 
-        db.collection('grievances').add({
-            title: document.getElementById('title').value,
-            description: document.getElementById('description').value,
-            mood: document.getElementById('mood').value,
-            severity: document.getElementById('severity').value,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            senderId: user.uid,
-            senderEmail: user.email,
-            receiverId: partnerId,
-            receiverEmail: partnerEmail,
-            status: 'Pending'
-        }).then(() => {
+        // --- MODIFIED: Provide instant user feedback to prevent "hanging" feeling ---
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<i class="iconoir-clock"></i> Submitting...';
+
+        try {
+            const userDoc = await db.collection('users').doc(user.uid).get();
+            const partnerEmail = userDoc.data().partnerEmail;
+            
+            if (!partnerEmail) {
+                alert("Please set your partner's email in your profile first!");
+                window.location.href = 'profile.html';
+                return;
+            }
+            
+            const partnerQuery = await db.collection('users').where('email', '==', partnerEmail).get();
+            const partnerId = partnerQuery.empty ? null : partnerQuery.docs[0].id;
+
+            await db.collection('grievances').add({
+                title: document.getElementById('title').value,
+                description: document.getElementById('description').value,
+                mood: document.getElementById('mood').value,
+                severity: document.getElementById('severity').value,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                senderId: user.uid,
+                senderEmail: user.email,
+                receiverId: partnerId,
+                receiverEmail: partnerEmail,
+                status: 'Pending'
+            });
+
             window.location.href = 'thankyou.html';
-        }).catch(error => alert(error.message));
+
+        } catch (error) {
+            alert(error.message);
+            // Re-enable the button if an error occurs
+            submitButton.disabled = false;
+            submitButton.innerHTML = '<i class="iconoir-send"></i> Submit 💌';
+        }
     });
 };
 
-// --- DASHBOARD (MODIFIED FOR EMOJI ICONS) ---
+// --- DASHBOARD ---
 const loadDashboard = async () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -186,8 +191,6 @@ const loadDashboard = async () => {
     const userData = userDoc.data();
     
     document.getElementById('welcome-user').innerText = `Welcome, ${userData.nickname || user.email}!`;
-    
-    // MODIFIED: Display user's assigned emoji
     document.getElementById('user-icon').textContent = userData.userIcon || '❤️';
     document.querySelector('#user-profile p').textContent = userData.nickname || 'You';
     
@@ -198,7 +201,6 @@ const loadDashboard = async () => {
 
         if (!partnerQuery.empty) {
             const partnerData = partnerQuery.docs[0].data();
-            // MODIFIED: Display partner's assigned emoji
             partnerIconEl.textContent = partnerData.userIcon || '💜';
             partnerNameEl.textContent = partnerData.nickname || 'Partner';
         } else {
