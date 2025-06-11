@@ -56,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-// --- AUTHENTICATION ---
+// --- AUTHENTICATION (TEST VERSION) ---
 const initRegisterForm = () => {
     const form = document.getElementById('registerForm');
     if (!form) return;
@@ -67,9 +67,13 @@ const initRegisterForm = () => {
         const password = form.password.value;
         const partnerEmail = form.partnerEmail.value.toLowerCase();
 
+        console.log("REGISTER TEST: Starting registration process...");
+
         auth.createUserWithEmailAndPassword(email, password)
             .then(cred => {
+                console.log("REGISTER TEST: Authentication user created. Now creating Firestore document...");
                 const userIcon = assignUserIcon(cred.user.uid);
+                // This is the step that was failing
                 return db.collection('users').doc(cred.user.uid).set({
                     email: email,
                     nickname: nickname,
@@ -78,19 +82,22 @@ const initRegisterForm = () => {
                 });
             })
             .then(() => {
-                // --- FIX 1: BETTER USER EXPERIENCE ---
-                // Automatically log the user in and send to dashboard instead of making them log in again.
-                alert('Registration successful! Welcome!');
+                // --- THIS IS THE PROOF ---
+                // If you see this message, the NEW code is working.
+                console.log("REGISTER TEST: Firestore document created successfully.");
+                alert('SUCCESS! The NEW registration code is working! Welcome!');
                 window.location.href = 'dashboard.html';
             })
             .catch(err => {
-                console.error("Registration Error:", err);
-                alert(`Error: ${err.message}`);
+                // This will now catch any error, including Firestore permission errors.
+                console.error("A CRITICAL REGISTRATION ERROR OCCURRED:", err);
+                alert(`Registration Failed: ${err.message}`);
             });
     });
 };
 
 const initLoginForm = () => {
+    // ... your existing login form code is fine, leave it as is ...
     const form = document.getElementById('loginForm');
     if (!form) return;
     form.addEventListener('submit', e => {
@@ -105,7 +112,6 @@ const initLoginForm = () => {
             });
     });
 };
-
 // --- PROFILE PAGE ---
 const loadProfilePage = () => {
     const user = auth.currentUser;
