@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your Dashboard</title>
+    <title>Dashboard – Grievance Connect</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/iconoir-icons/iconoir@main/css/iconoir.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container dashboard-container">
-         <div class="header-nav">
+        <div class="header-nav">
             <h2 id="welcome-user">Welcome!</h2>
             <a href="#" id="logout" class="nav-link"><i class="iconoir-log-out"></i> Logout</a>
         </div>
@@ -21,30 +21,42 @@
             </div>
             <div class="couple-heart"><i class="iconoir-heart-solid"></i></div>
             <div id="partner-profile" class="couple-profile">
-                <div class="profile-icon" id="partner-icon">💜</div>
+                <div class="profile-icon" id="partner-icon">❔</div>
                 <p>Partner</p>
             </div>
         </div>
-        <a href="profile.html" class="btn edit-profile-btn"><i class="iconoir-edit-pencil"></i> Edit Profile</a>
-        
+
+        <a href="profile.html" class="btn edit-profile-btn">
+            <i class="iconoir-edit-pencil"></i> Edit Profile
+        </a>
+
         <div class="dashboard-main">
             <div class="dashboard-column">
                 <h3><i class="iconoir-send"></i> Grievances You've Sent</h3>
-                <div id="sent-grievances-list"><p>Fetching your grievances...</p></div>
+                <div id="sent-grievances-list">
+                    <p>Fetching your grievances...</p>
+                </div>
             </div>
 
             <div class="dashboard-column">
                 <h3><i class="iconoir-inbox"></i> Grievances You've Received</h3>
-                <div id="received-grievances-list"><p>Fetching your grievances...</p></div>
+                <div id="received-grievances-list">
+                    <p>Fetching your grievances...</p>
+                </div>
             </div>
         </div>
 
-        <a href="grievance.html" class="btn submit-btn"><i class="iconoir-add-to-cart"></i> Submit a New Grievance</a>
+        <a href="grievance.html" class="btn submit-btn">
+            <i class="iconoir-add-to-cart"></i> Submit a New Grievance
+        </a>
     </div>
 
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
-    <script src="script.js"></script>
+    
+    <!-- Main Script -->
+    <script src="script.js" defer></script>
 </body>
 </html>
