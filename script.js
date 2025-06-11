@@ -1,5 +1,5 @@
 /* =========================================================
-   love-app-final.js – FINAL UNIFIED SCRIPT
+   love-app-final-v2.js – FINAL, CORRECTED SCRIPT
    ========================================================= */
 
 /* ---------- Firebase Config & Initialisation ---------- */
@@ -84,7 +84,6 @@ function initRegisterForm() {
 
         try {
             const cred = await auth.createUserWithEmailAndPassword(email, password);
-            // This is now the ONLY place a user profile is created at registration.
             await db.collection("users").doc(cred.user.uid).set({
                 email: email,
                 nickname: nickname,
@@ -144,7 +143,6 @@ function initProfileForm(user) {
         const nickname = form.nickname.value.trim();
         const partnerEmail = form.partnerEmail.value.trim().toLowerCase();
         try {
-            // .set with merge is perfect. It creates or updates.
             await db.collection("users").doc(user.uid).set({ nickname, partnerEmail }, { merge: true });
             alert("Profile updated!");
             location.replace("dashboard.html");
@@ -211,8 +209,6 @@ async function loadDashboard() {
     try {
         const userDoc = await db.collection("users").doc(user.uid).get();
         
-        // **THIS IS THE FINAL FIX**
-        // If a user is logged in but has no profile document, we send them to create one.
         if (!userDoc.exists()) {
             alert("Welcome! Let's set up your profile.");
             return location.replace("profile.html");
@@ -256,7 +252,8 @@ function loadGrievances(identifier, type) {
                 return;
             }
             listEl.innerHTML = snap.docs.map(doc => {
-                const g = doc..data();
+                // **THE FINAL FIX IS HERE**
+                const g = doc.data(); // Corrected from doc..data()
                 return `<div class="grievance-item">
                   <h4>${g.title}</h4>
                   <p>${g.description}</p>
