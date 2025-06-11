@@ -1,14 +1,20 @@
-// --- STEP 1: PASTE YOUR NEW, SECURE FIREBASE CONFIGURATION HERE ---
-// WARNING: Your old API key was exposed. Please generate a new one from 
-// the Firebase console and replace the placeholder values below.
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyA8QfLoifA2-DjldYaMBeIge1D6TbRpBWw", // This is a secret key
+  apiKey: "AIzaSyA8QfLoifA2-DjldYaMBeIge1D6TbRpBWw",
   authDomain: "summa-57ad5.firebaseapp.com",
   projectId: "summa-57ad5",
-  storageBucket: "summa-57ad5.appspot.com",
+  storageBucket: "summa-57ad5.firebasestorage.app",
   messagingSenderId: "472212537134",
   appId: "1:472212537134:web:fc930ea95fa9b7ffc4c4bf"
 };
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
 
 // --- INITIALIZE FIREBASE SERVICES ---
 firebase.initializeApp(firebaseConfig);
