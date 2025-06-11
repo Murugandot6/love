@@ -31,27 +31,31 @@ document.addEventListener("DOMContentLoaded", () => {
         const protectedPages = ["dashboard.html", "grievance.html", "profile.html"];
         
         if (user) {
+            console.log("User is logged in:", user.uid);
             if (page === 'login.html' || page === 'register.html' || page === 'index.html' || page === '') {
                 window.location.href = 'dashboard.html';
             } else if (protectedPages.includes(page)) {
                 if (page === 'dashboard.html') loadDashboard();
                 if (page === 'profile.html') loadProfilePage();
+                if (page === 'grievance.html') initGrievanceForm();
             }
         } else {
+            console.log("No user is logged in.");
             if (protectedPages.includes(page)) {
                 window.location.href = 'login.html';
             }
         }
     });
 
+    // Attach listeners only if the corresponding form exists on the page
     const page = window.location.pathname.split("/").pop();
-    if (page === 'register.html' && document.getElementById('registerForm')) initRegisterForm();
-    if (page === 'login.html' && document.getElementById('loginForm')) initLoginForm();
-    if (page === 'profile.html' && document.getElementById('profileForm')) initProfileForm();
-    if (page === 'grievance.html' && document.getElementById('grievanceForm')) initGrievanceForm();
+    if (page === 'register.html') initRegisterForm();
+    if (page === 'login.html') initLoginForm();
     
+    // Universal logout listener
     document.body.addEventListener('click', e => {
-        if (e.target.matches('#logout, #logout *')) {
+        // Use .closest to handle clicks on the icon inside the link
+        if (e.target.closest('#logout')) {
             e.preventDefault();
             auth.signOut().then(() => window.location.href = 'login.html');
         }
@@ -61,6 +65,7 @@ document.addEventListener("DOMContentLoaded", () => {
 // --- AUTHENTICATION ---
 const initRegisterForm = () => {
     const form = document.getElementById('registerForm');
+    if (!form) return;
     form.addEventListener('submit', e => {
         e.preventDefault();
         const nickname = form.nickname.value;
@@ -70,7 +75,9 @@ const initRegisterForm = () => {
 
         auth.createUserWithEmailAndPassword(email, password)
             .then(cred => {
+                console.log("User created in Auth, now saving to Firestore...");
                 const userIcon = assignUserIcon(cred.user.uid);
+                // This is the step that was likely failing silently.
                 return db.collection('users').doc(cred.user.uid).set({
                     email: email,
                     nickname: nickname,
@@ -79,41 +86,63 @@ const initRegisterForm = () => {
                 });
             })
             .then(() => {
+                console.log("User data saved successfully to Firestore.");
                 alert('Registration successful! Please log in.');
                 window.location.href = 'login.html';
             })
-            .catch(err => alert(`Error: ${err.message}`));
+            .catch(err => {
+                // FIX: This will now show you Firestore errors (like "Permission Denied")
+                console.error("Registration Error:", err);
+                alert(`Error: ${err.message}`);
+            });
     });
 };
 
 const initLoginForm = () => {
     const form = document.getElementById('loginForm');
+    if (!form) return;
     form.addEventListener('submit', e => {
         e.preventDefault();
         const email = form.email.value; 
         const password = form.password.value;
         auth.signInWithEmailAndPassword(email, password)
             .then(() => window.location.href = 'dashboard.html')
-            .catch(err => alert(`Login Failed: ${err.message}`));
+            .catch(err => {
+                console.error("Login Failed:", err);
+                alert(`Login Failed: ${err.message}`);
+            });
     });
 };
 
-// --- PROFILE MANAGEMENT ---
+// --- PROFILE PAGE ---
 const loadProfilePage = async () => {
     const user = auth.currentUser;
     if (!user) return;
 
-    const userDoc = await db.collection('users').doc(user.uid).get();
-    if (!userDoc.exists) return;
-    const userData = userDoc.data();
-
-    document.getElementById('nickname').value = userData.nickname || '';
-    document.getElementById('partnerEmail').value = userData.partnerEmail || '';
-    document.getElementById('profile-icon-preview').textContent = userData.userIcon || '❤️';
+    try {
+        const userDoc = await db.collection('users').doc(user.uid).get();
+        // FIX: Check if the user document actually exists. This is a critical bug fix.
+        if (userDoc.exists) {
+            const userData = userDoc.data();
+            document.getElementById('nickname').value = userData.nickname || '';
+            document.getElementById('partnerEmail').value = userData.partnerEmail || '';
+            document.getElementById('profile-icon-preview').textContent = userData.userIcon || '❤️';
+        } else {
+            // This happens if the user was created in Auth but their data failed to save to Firestore.
+            console.error("Profile Error: User document not found in Firestore!");
+            alert("Could not load your profile data. Please try registering again.");
+        }
+        initProfileForm(); // Initialize form listener after data is loaded
+    } catch (error) {
+        console.error("Error loading profile:", error);
+        alert("An error occurred while loading your profile.");
+    }
 };
 
 const initProfileForm = () => {
-    document.getElementById('profileForm').addEventListener('submit', async e => {
+    const form = document.getElementById('profileForm');
+    if (!form) return;
+    form.addEventListener('submit', async e => {
         e.preventDefault();
         const user = auth.currentUser;
         if (!user) return;
@@ -121,39 +150,45 @@ const initProfileForm = () => {
         const nickname = document.getElementById('nickname').value;
         const partnerEmail = document.getElementById('partnerEmail').value.toLowerCase();
         
-        await db.collection('users').doc(user.uid).update({
-            nickname: nickname,
-            partnerEmail: partnerEmail,
-        });
-
-        alert('Profile updated successfully!');
-        window.location.href = 'dashboard.html';
+        try {
+            await db.collection('users').doc(user.uid).update({
+                nickname: nickname,
+                partnerEmail: partnerEmail,
+            });
+            alert('Profile updated successfully!');
+            window.location.href = 'dashboard.html';
+        } catch (error) {
+            console.error("Profile Update Error:", error);
+            alert(`Failed to update profile: ${error.message}`);
+        }
     });
 };
 
-// --- GRIEVANCE SUBMISSION (FIXED) ---
+// --- GRIEVANCE SUBMISSION ---
 const initGrievanceForm = () => {
     const form = document.getElementById('grievanceForm');
+    if (!form) return;
     form.addEventListener('submit', async e => {
         e.preventDefault();
         const user = auth.currentUser;
         if (!user) return;
 
-        // --- MODIFIED: Provide instant user feedback to prevent "hanging" feeling ---
         const submitButton = form.querySelector('button[type="submit"]');
         submitButton.disabled = true;
         submitButton.innerHTML = '<i class="iconoir-clock"></i> Submitting...';
 
         try {
             const userDoc = await db.collection('users').doc(user.uid).get();
-            const partnerEmail = userDoc.data().partnerEmail;
-            
-            if (!partnerEmail) {
+            // FIX: Another critical check to ensure user data exists before proceeding.
+            if (!userDoc.exists || !userDoc.data().partnerEmail) {
                 alert("Please set your partner's email in your profile first!");
                 window.location.href = 'profile.html';
                 return;
             }
             
+            const userData = userDoc.data();
+            const partnerEmail = userData.partnerEmail;
+
             const partnerQuery = await db.collection('users').where('email', '==', partnerEmail).get();
             const partnerId = partnerQuery.empty ? null : partnerQuery.docs[0].id;
 
@@ -164,17 +199,16 @@ const initGrievanceForm = () => {
                 severity: document.getElementById('severity').value,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                 senderId: user.uid,
-                senderEmail: user.email,
+                senderNickname: userData.nickname, // FIX: Store sender's name
                 receiverId: partnerId,
                 receiverEmail: partnerEmail,
                 status: 'Pending'
             });
 
             window.location.href = 'thankyou.html';
-
         } catch (error) {
-            alert(error.message);
-            // Re-enable the button if an error occurs
+            console.error("Grievance Submission Error:", error);
+            alert(`Failed to send grievance: ${error.message}`);
             submitButton.disabled = false;
             submitButton.innerHTML = '<i class="iconoir-send"></i> Submit 💌';
         }
@@ -186,47 +220,59 @@ const loadDashboard = async () => {
     const user = auth.currentUser;
     if (!user) return;
 
-    const userDoc = await db.collection('users').doc(user.uid).get();
-    if (!userDoc.exists) { console.error("User doc not found!"); return; }
-    const userData = userDoc.data();
-    
-    document.getElementById('welcome-user').innerText = `Welcome, ${userData.nickname || user.email}!`;
-    document.getElementById('user-icon').textContent = userData.userIcon || '❤️';
-    document.querySelector('#user-profile p').textContent = userData.nickname || 'You';
-    
-    if (userData.partnerEmail) {
-        const partnerQuery = await db.collection('users').where('email', '==', userData.partnerEmail).get();
-        const partnerIconEl = document.getElementById('partner-icon');
-        const partnerNameEl = document.querySelector('#partner-profile p');
-
-        if (!partnerQuery.empty) {
-            const partnerData = partnerQuery.docs[0].data();
-            partnerIconEl.textContent = partnerData.userIcon || '💜';
-            partnerNameEl.textContent = partnerData.nickname || 'Partner';
-        } else {
-            partnerIconEl.textContent = '❔';
-            partnerNameEl.textContent = 'Partner';
+    try {
+        const userDoc = await db.collection('users').doc(user.uid).get();
+        // FIX: A final critical check for the user's own data.
+        if (!userDoc.exists) {
+            console.error("Dashboard Error: Current user document not found in Firestore!");
+            document.getElementById('welcome-user').innerText = `Welcome, ${user.email}! (Profile data not found)`;
+            return;
         }
-    }
+        
+        const userData = userDoc.data();
+        // FIX: Display nickname, but fall back to email if nickname doesn't exist.
+        document.getElementById('welcome-user').innerText = `Welcome, ${userData.nickname || user.email}!`;
+        document.getElementById('user-icon').textContent = userData.userIcon || '❤️';
+        document.querySelector('#user-profile p').textContent = userData.nickname || 'You';
+        
+        if (userData.partnerEmail) {
+            const partnerQuery = await db.collection('users').where('email', '==', userData.partnerEmail).get();
+            const partnerIconEl = document.getElementById('partner-icon');
+            const partnerNameEl = document.querySelector('#partner-profile p');
 
-    loadGrievances(user.uid, 'sent');
-    loadGrievances(user.email, 'received');
-
-    const receivedList = document.getElementById('received-grievances-list');
-    if(receivedList) {
-        receivedList.addEventListener('submit', e => {
-            e.preventDefault();
-            if (e.target.matches('.status-update-form')) {
-                const form = e.target;
-                db.collection('grievances').doc(form.dataset.id).update({ status: form.status.value });
+            if (!partnerQuery.empty) {
+                const partnerData = partnerQuery.docs[0].data();
+                partnerIconEl.textContent = partnerData.userIcon || '💜';
+                // FIX: Show partner's actual nickname.
+                partnerNameEl.textContent = partnerData.nickname || 'Partner';
+            } else {
+                partnerIconEl.textContent = '❔';
+                // FIX: Make it clear the partner hasn't registered yet.
+                partnerNameEl.textContent = 'Partner (Not registered)';
             }
-        });
+        }
+
+        loadGrievances(user.uid, 'sent');
+        loadGrievances(user.email, 'received');
+
+        const receivedList = document.getElementById('received-grievances-list');
+        if (receivedList) {
+            receivedList.addEventListener('submit', e => {
+                e.preventDefault();
+                if (e.target.matches('.status-update-form')) {
+                    const form = e.target;
+                    db.collection('grievances').doc(form.dataset.id).update({ status: form.status.value });
+                }
+            });
+        }
+    } catch (error) {
+        console.error("Error loading dashboard:", error);
     }
 };
 
 const loadGrievances = (identifier, type) => {
     const listEl = document.getElementById(`${type}-grievances-list`);
-    if(!listEl) return;
+    if (!listEl) return;
     const queryField = type === 'sent' ? 'senderId' : 'receiverEmail';
 
     db.collection('grievances').where(queryField, "==", identifier).orderBy("timestamp", "desc")
@@ -251,6 +297,10 @@ const loadGrievances = (identifier, type) => {
                     </div>`;
             });
             listEl.innerHTML = html;
+        }, error => {
+            // FIX: This will catch and display errors if you don't have permission to read grievances.
+            console.error(`Error loading ${type} grievances:`, error);
+            listEl.innerHTML = `<p style="color: red;">Error: Could not load grievances. Check Firestore rules.</p>`;
         });
 };
 
