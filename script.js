@@ -108,41 +108,53 @@ const initLoginForm = () => {
 };
 
 // --- PROFILE PAGE ---
-const loadProfilePage = async () => {
+const loadProfilePage = () => {
     const user = auth.currentUser;
     if (!user) return;
 
-    try {
-        const userDoc = await db.collection('users').doc(user.uid).get();
-        if (userDoc.exists) {
-            const userData = userDoc.data();
+    // KEY FIX 1: Attach the form listener IMMEDIATELY.
+    // This ensures the "Save" button will always be active.
+    initProfileForm(user); 
+
+    // Now, try to load existing data to fill the form. This is for display only.
+    const userDocRef = db.collection('users').doc(user.uid);
+    userDocRef.get().then(doc => {
+        if (doc.exists) {
+            const userData = doc.data();
             document.getElementById('nickname').value = userData.nickname || '';
             document.getElementById('partnerEmail').value = userData.partnerEmail || '';
             document.getElementById('profile-icon-preview').textContent = userData.userIcon || '❤️';
-            initProfileForm(); 
         } else {
-            console.error("Profile Error: User document not found in Firestore!");
-            alert("Could not load your profile data. Please try registering again.");
+            console.warn("User document doesn't exist yet. It will be created on the first save.");
+            // We can even pre-fill the icon for a new user
+            document.getElementById('profile-icon-preview').textContent = assignUserIcon(user.uid);
         }
-    } catch (error) {
-        console.error("Error loading profile:", error);
-        alert(`An error occurred: ${error.message}`);
-    }
+    }).catch(error => {
+        console.error("Error loading profile data:", error);
+        alert("Could not load your profile data, but you can still save changes.");
+    });
 };
 
-const initProfileForm = () => {
+const initProfileForm = (user) => {
     const form = document.getElementById('profileForm');
     if (!form) return;
-    form.addEventListener('submit', async e => {
+
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const user = auth.currentUser;
-        if (!user) return;
         
         const nickname = document.getElementById('nickname').value;
         const partnerEmail = document.getElementById('partnerEmail').value.toLowerCase();
         
+        const profileData = {
+            nickname: nickname,
+            partnerEmail: partnerEmail
+        };
+
         try {
-            await db.collection('users').doc(user.uid).update({ nickname, partnerEmail });
+            // KEY FIX 2: Use .set() with { merge: true }.
+            // This will CREATE the document if it's new, or UPDATE it if it exists.
+            await db.collection('users').doc(user.uid).set(profileData, { merge: true });
+            
             alert('Profile updated successfully!');
             window.location.href = 'dashboard.html';
         } catch (error) {
@@ -151,55 +163,6 @@ const initProfileForm = () => {
         }
     });
 };
-
-// --- GRIEVANCE SUBMISSION ---
-const initGrievanceForm = () => {
-    const form = document.getElementById('grievanceForm');
-    if (!form) return;
-    form.addEventListener('submit', async e => {
-        e.preventDefault();
-        const user = auth.currentUser;
-        if (!user) return;
-
-        const submitButton = form.querySelector('button[type="submit"]');
-        submitButton.disabled = true;
-        submitButton.innerHTML = '<i class="iconoir-clock"></i> Submitting...';
-
-        try {
-            const userDoc = await db.collection('users').doc(user.uid).get();
-            if (!userDoc.exists || !userDoc.data().partnerEmail) {
-                alert("Please set your partner's email in your profile first!");
-                window.location.href = 'profile.html';
-                return;
-            }
-            
-            const userData = userDoc.data();
-            const partnerEmail = userData.partnerEmail;
-            const partnerQuery = await db.collection('users').where('email', '==', partnerEmail).get();
-            const partnerId = partnerQuery.empty ? null : partnerQuery.docs[0].id;
-
-            await db.collection('grievances').add({
-                title: form.title.value,
-                description: form.description.value,
-                mood: form.mood.value,
-                severity: form.severity.value,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                senderId: user.uid,
-                senderNickname: userData.nickname,
-                receiverId: partnerId,
-                receiverEmail: partnerEmail,
-                status: 'Pending'
-            });
-            window.location.href = 'thankyou.html';
-        } catch (error) {
-            console.error("Grievance Submission Error:", error);
-            alert(`Failed to send grievance: ${error.message}`);
-            submitButton.disabled = false;
-            submitButton.innerHTML = '<i class="iconoir-send"></i> Submit 💌';
-        }
-    });
-};
-
 // --- DASHBOARD ---
 const loadDashboard = async () => {
     const user = auth.currentUser;
