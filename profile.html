@@ -11,14 +11,8 @@
     <div class="container">
         <h2><i class="iconoir-user-star"></i> Edit Your Profile</h2>
         <form id="profileForm">
-            <!-- Corrected Profile Picture Section -->
-            <div class="profile-pic-container">
-                <img id="profilePicPreview" src="https://via.placeholder.com/150/f7a0b8/d6336c?text=Love" alt="Your profile picture">
-                <input type="file" id="profilePicUpload" class="hidden-file-input">
-                <label for="profilePicUpload" class="btn-upload">
-                    <i class="iconoir-camera"></i>
-                </label>
-            </div>
+            <!-- MODIFIED: Replaced the entire profile picture section with a single div for the icon -->
+            <div class="profile-icon-large" id="profile-icon-preview">❤️</div>
 
             <!-- Nickname Section -->
             <label for="nickname"><i class="iconoir-user"></i> Nickname</label>
@@ -32,11 +26,10 @@
         </form>
         <a href="dashboard.html" class="form-link">Back to Dashboard</a>
     </div>
-    <!-- Firebase SDKs -->
+    
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-storage-compat.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
