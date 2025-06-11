@@ -17,8 +17,49 @@
         </form>
         <p class="form-link">Don't have an account? <a href="register.html">Register here</a>.</p>
     </div>
+
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
-    <script src="script.js"></script>
+    
+    <!-- Firebase Config -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyA8QfLoifA2-DjldYaMBeIge1D6TbRpBWw",
+            authDomain: "summa-57ad5.firebaseapp.com",
+            projectId: "summa-57ad5",
+            storageBucket: "summa-57ad5.appspot.com",
+            messagingSenderId: "472212537134",
+            appId: "1:472212537134:web:fc930ea95fa9b7ffc4c4bf"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+    </script>
+    
+    <!-- Login Script -->
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const loginBtn = document.querySelector('.login-btn');
+            
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<i class="iconoir-loading"></i> Logging in...';
+            
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+                window.location.href = 'dashboard.html';
+            } catch (error) {
+                console.error('Login error:', error);
+                alert(error.message);
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = '<i class="iconoir-log-in"></i> Login';
+            }
+        });
+    </script>
 </body>
 </html>
