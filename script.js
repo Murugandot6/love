@@ -10,11 +10,19 @@ const firebaseConfig = {
   appId: "1:472212537134:web:fc930ea95fa9b7ffc4c4bf"
 };
 
-// --- INITIALIZE FIREBASE SERVICES (STORAGE REMOVED) ---
+// --- INITIALIZE FIREBASE SERVICES ---
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
-// const storage = firebase.storage(); // <-- REMOVED to disable paid feature
+
+// --- NEW: AVATAR GENERATION FUNCTION ---
+// This function creates a unique avatar URL from DiceBear based on a seed string.
+const generateAvatarUrl = (seed) => {
+    // You can change 'micah' to other styles like 'bottts', 'adventurer', 'fun-emoji', etc.
+    // See DiceBear documentation for more styles.
+    const style = 'micah';
+    return `https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(seed)}`;
+};
 
 // --- PAGE LOAD ROUTING ---
 document.addEventListener("DOMContentLoaded", () => {
@@ -28,7 +36,6 @@ document.addEventListener("DOMContentLoaded", () => {
             } else if (protectedPages.includes(page)) {
                 if (page === 'dashboard.html') loadDashboard();
                 if (page === 'profile.html') loadProfilePage();
-                // No need to call initGrievanceForm here, it's handled by its own submit listener
             }
         } else {
             if (protectedPages.includes(page)) {
@@ -37,34 +44,21 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Attach form listeners based on the current page
     const page = window.location.pathname.split("/").pop();
-    if (page === 'register.html' && document.getElementById('registerForm')) {
-        initRegisterForm();
-    }
-    if (page === 'login.html' && document.getElementById('loginForm')) {
-        initLoginForm();
-    }
-    if (page === 'profile.html' && document.getElementById('profileForm')) {
-        initProfileForm();
-    }
-    if (page === 'grievance.html' && document.getElementById('grievanceForm')) {
-        initGrievanceForm();
-    }
+    if (page === 'register.html' && document.getElementById('registerForm')) initRegisterForm();
+    if (page === 'login.html' && document.getElementById('loginForm')) initLoginForm();
+    if (page === 'profile.html' && document.getElementById('profileForm')) initProfileForm();
+    if (page === 'grievance.html' && document.getElementById('grievanceForm')) initGrievanceForm();
     
-    // Universal logout listener
     document.body.addEventListener('click', e => {
-        if (e.target.matches('#logout, #logout *')) { // Also match icons inside the link
+        if (e.target.matches('#logout, #logout *')) {
             e.preventDefault();
-            auth.signOut().then(() => {
-                console.log('User signed out.');
-                window.location.href = 'login.html';
-            });
+            auth.signOut().then(() => window.location.href = 'login.html');
         }
     });
 });
 
-// --- AUTHENTICATION (LOGIN FIXED) ---
+// --- AUTHENTICATION (MODIFIED FOR AVATARS) ---
 const initRegisterForm = () => {
     const form = document.getElementById('registerForm');
     form.addEventListener('submit', e => {
@@ -73,17 +67,17 @@ const initRegisterForm = () => {
         const email = form.email.value;
         const password = form.password.value;
         const partnerEmail = form.partnerEmail.value.toLowerCase();
+        
+        // --- MODIFIED: Generate an avatar URL on registration ---
+        const avatarUrl = generateAvatarUrl(nickname);
 
         auth.createUserWithEmailAndPassword(email, password)
-            .then(cred => {
-                // Set user data in Firestore
-                return db.collection('users').doc(cred.user.uid).set({
-                    email: email,
-                    nickname: nickname,
-                    partnerEmail: partnerEmail,
-                    profilePicUrl: null // No profile pic on creation
-                });
-            })
+            .then(cred => db.collection('users').doc(cred.user.uid).set({
+                email: email,
+                nickname: nickname,
+                partnerEmail: partnerEmail,
+                profilePicUrl: avatarUrl // --- MODIFIED: Save the new avatar URL ---
+            }))
             .then(() => {
                 alert('Registration successful! Please log in.');
                 window.location.href = 'login.html';
@@ -96,18 +90,15 @@ const initLoginForm = () => {
     const form = document.getElementById('loginForm');
     form.addEventListener('submit', e => {
         e.preventDefault();
-        // *** FIXED: Now correctly gets 'email' field from the updated login.html ***
         const email = form.email.value; 
         const password = form.password.value;
         auth.signInWithEmailAndPassword(email, password)
-            .then(() => {
-                window.location.href = 'dashboard.html';
-            })
+            .then(() => window.location.href = 'dashboard.html')
             .catch(err => alert(`Login Failed: ${err.message}`));
     });
 };
 
-// --- PROFILE MANAGEMENT (STORAGE REMOVED) ---
+// --- PROFILE MANAGEMENT (MODIFIED FOR AVATARS) ---
 const loadProfilePage = async () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -119,11 +110,11 @@ const loadProfilePage = async () => {
     document.getElementById('nickname').value = userData.nickname || '';
     document.getElementById('partnerEmail').value = userData.partnerEmail || '';
     
-    // Profile picture logic is now display-only
-    document.getElementById('profilePicPreview').src = userData.profilePicUrl || 'https://via.placeholder.com/150/f7a0b8/d6336c?text=Love';
-    // Hide the upload button as it's no longer used
-    const uploadButton = document.querySelector('.btn-upload');
-    if(uploadButton) uploadButton.style.display = 'none';
+    // --- MODIFIED: Use DiceBear avatar as a fallback ---
+    document.getElementById('profilePicPreview').src = userData.profilePicUrl || generateAvatarUrl(userData.nickname || 'user');
+    
+    // Hide the file upload button as it's not used
+    document.querySelector('.btn-upload').style.display = 'none';
 };
 
 const initProfileForm = () => {
@@ -135,19 +126,20 @@ const initProfileForm = () => {
         const nickname = document.getElementById('nickname').value;
         const partnerEmail = document.getElementById('partnerEmail').value.toLowerCase();
         
-        // --- REMOVED STORAGE LOGIC ---
-        // No file upload code is needed here anymore.
-        // We just update the text fields.
+        // --- MODIFIED: Generate a new avatar URL when the nickname changes ---
+        const newAvatarUrl = generateAvatarUrl(nickname);
 
         await db.collection('users').doc(user.uid).update({
             nickname: nickname,
             partnerEmail: partnerEmail,
+            profilePicUrl: newAvatarUrl // --- MODIFIED: Update the avatar URL ---
         });
 
         alert('Profile updated successfully!');
         window.location.href = 'dashboard.html';
     });
 };
+
 
 // --- GRIEVANCE SUBMISSION (NO CHANGES) ---
 const initGrievanceForm = () => {
@@ -185,7 +177,7 @@ const initGrievanceForm = () => {
     });
 };
 
-// --- DASHBOARD (NO CHANGES NEEDED, ALREADY HANDLES MISSING PROFILE PICS) ---
+// --- DASHBOARD (MODIFIED FOR AVATARS) ---
 const loadDashboard = async () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -197,7 +189,8 @@ const loadDashboard = async () => {
     document.getElementById('welcome-user').innerText = `Welcome, ${userData.nickname || user.email}!`;
     
     const userProfileEl = document.getElementById('user-profile');
-    userProfileEl.querySelector('img').src = userData.profilePicUrl || 'https://via.placeholder.com/100/f7a0b8/d6336c?text=You';
+    // --- MODIFIED: Use DiceBear avatar as a fallback ---
+    userProfileEl.querySelector('img').src = userData.profilePicUrl || generateAvatarUrl(userData.nickname || 'user');
     userProfileEl.querySelector('p').textContent = userData.nickname || 'You';
     
     if (userData.partnerEmail) {
@@ -205,10 +198,11 @@ const loadDashboard = async () => {
         const partnerProfileEl = document.getElementById('partner-profile');
         if (!partnerQuery.empty) {
             const partnerData = partnerQuery.docs[0].data();
-            partnerProfileEl.querySelector('img').src = partnerData.profilePicUrl || 'https://via.placeholder.com/100/f7a0b8/d6336c?text=Love';
+            // --- MODIFIED: Use DiceBear avatar for partner ---
+            partnerProfileEl.querySelector('img').src = partnerData.profilePicUrl || generateAvatarUrl(partnerData.nickname || 'partner');
             partnerProfileEl.querySelector('p').textContent = partnerData.nickname || 'Partner';
         } else {
-             partnerProfileEl.querySelector('img').src = 'https://via.placeholder.com/100/f7a0b8/d6336c?text=Love';
+             partnerProfileEl.querySelector('img').src = generateAvatarUrl('partner');
              partnerProfileEl.querySelector('p').textContent = 'Partner';
         }
     }
