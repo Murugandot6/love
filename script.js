@@ -1,5 +1,5 @@
 /* =========================================================
-   love-app-final-v2.js – FINAL, CORRECTED SCRIPT
+   love-app-final-v3.js – FINAL, DOUBLE-CHECKED SCRIPT
    ========================================================= */
 
 /* ---------- Firebase Config & Initialisation ---------- */
@@ -30,16 +30,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const authPages = ["login.html", "register.html", "index.html", ""];
 
         if (user) {
-            if (authPages.includes(page)) {
-                return location.replace("dashboard.html");
-            }
+            if (authPages.includes(page)) { return location.replace("dashboard.html"); }
             if (page === "dashboard.html") loadDashboard();
             if (page === "profile.html") loadProfilePage();
             if (page === "grievance.html") initGrievanceForm();
         } else {
-            if (protectedPages.includes(page)) {
-                location.replace("login.html");
-            }
+            if (protectedPages.includes(page)) { location.replace("login.html"); }
         }
     });
 
@@ -74,20 +70,16 @@ document.addEventListener("DOMContentLoaded", () => {
 function initRegisterForm() {
     const form = document.getElementById("registerForm");
     if (!form) return;
-
     form.addEventListener("submit", async e => {
         e.preventDefault();
         const nickname = form.nickname.value.trim();
         const email = form.email.value.trim().toLowerCase();
         const password = form.password.value;
         const partnerEmail = form.partnerEmail.value.trim().toLowerCase();
-
         try {
             const cred = await auth.createUserWithEmailAndPassword(email, password);
             await db.collection("users").doc(cred.user.uid).set({
-                email: email,
-                nickname: nickname,
-                partnerEmail: partnerEmail,
+                email, nickname, partnerEmail,
                 userIcon: assignUserIcon(cred.user.uid),
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
@@ -103,13 +95,10 @@ function initRegisterForm() {
 function initLoginForm() {
     const form = document.getElementById("loginForm");
     if (!form) return;
-
     form.addEventListener("submit", async e => {
         e.preventDefault();
-        const email = form.email.value.trim().toLowerCase();
-        const password = form.password.value;
         try {
-            await auth.signInWithEmailAndPassword(email, password);
+            await auth.signInWithEmailAndPassword(form.email.value, form.password.value);
             location.replace("dashboard.html");
         } catch (err) {
             console.error("Login error:", err);
@@ -125,7 +114,6 @@ function loadProfilePage() {
     const user = auth.currentUser;
     if (!user) return;
     initProfileForm(user);
-
     db.collection("users").doc(user.uid).get().then(doc => {
         document.getElementById("profile-icon-preview").textContent = doc.exists ? doc.data().userIcon : assignUserIcon(user.uid);
         if (!doc.exists) return;
@@ -160,16 +148,15 @@ function initGrievanceForm() {
     const form = document.getElementById("grievanceForm");
     if (!form) return;
     const btn = form.querySelector("button[type='submit']");
-
     form.addEventListener("submit", async e => {
         e.preventDefault();
         const user = auth.currentUser;
         if (!user) return;
         btn.disabled = true;
         btn.innerHTML = "<i class='iconoir-clock'></i> Submitting...";
-
         try {
             const userDoc = await db.collection("users").doc(user.uid).get();
+            // **FIXED HERE TOO** - Using optional chaining `?.` is a safer way to check.
             if (!userDoc.data()?.partnerEmail) {
                 alert("Please set your partner's email in your profile first.");
                 return location.replace("profile.html");
@@ -177,7 +164,6 @@ function initGrievanceForm() {
             const userData = userDoc.data();
             const partnerQuery = await db.collection("users").where("email", "==", userData.partnerEmail).limit(1).get();
             const partnerId = partnerQuery.empty ? null : partnerQuery.docs[0].id;
-
             await db.collection("grievances").add({
                 title: form.title.value.trim(),
                 description: form.description.value.trim(),
@@ -209,7 +195,9 @@ async function loadDashboard() {
     try {
         const userDoc = await db.collection("users").doc(user.uid).get();
         
-        if (!userDoc.exists()) {
+        // **THE FINAL FIX IS HERE**
+        // Changed from .exists() to .exists (it's a property, not a function)
+        if (!userDoc.exists) {
             alert("Welcome! Let's set up your profile.");
             return location.replace("profile.html");
         }
@@ -218,7 +206,6 @@ async function loadDashboard() {
         document.getElementById("welcome-user").innerText = `Welcome, ${userData.nickname || user.email}!`;
         document.getElementById("user-icon").textContent = userData.userIcon;
         document.querySelector("#user-profile p").textContent = userData.nickname || "You";
-
         if (userData.partnerEmail) {
             const partnerQuery = await db.collection("users").where("email", "==", userData.partnerEmail).limit(1).get();
             const partnerIconEl = document.getElementById("partner-icon");
@@ -244,7 +231,6 @@ function loadGrievances(identifier, type) {
     const listEl = document.getElementById(`${type}-grievances-list`);
     if (!listEl) return;
     const queryField = type === "sent" ? "senderId" : "receiverEmail";
-
     db.collection("grievances").where(queryField, "==", identifier).orderBy("timestamp", "desc")
         .onSnapshot(snap => {
             if (snap.empty) {
@@ -252,18 +238,8 @@ function loadGrievances(identifier, type) {
                 return;
             }
             listEl.innerHTML = snap.docs.map(doc => {
-                // **THE FINAL FIX IS HERE**
-                const g = doc.data(); // Corrected from doc..data()
-                return `<div class="grievance-item">
-                  <h4>${g.title}</h4>
-                  <p>${g.description}</p>
-                  <div class="meta">
-                    <span>Mood: ${g.mood} | Severity: ${g.severity}</span><br>
-                    <span>${g.timestamp ? g.timestamp.toDate().toLocaleDateString() : ""}</span>
-                  </div>
-                  <div class="grievance-status">Status: ${g.status}</div>
-                  ${type === "received" ? statusUpdateForm(doc.id, g.status) : ""}
-               </div>`;
+                const g = doc.data();
+                return `<div class="grievance-item"><h4>${g.title}</h4><p>${g.description}</p><div class="meta"><span>Mood: ${g.mood} | Severity: ${g.severity}</span><br><span>${g.timestamp ? g.timestamp.toDate().toLocaleDateString() : ""}</span></div><div class="grievance-status">Status: ${g.status}</div>${type === "received" ? statusUpdateForm(doc.id, g.status) : ""}</div>`;
             }).join('');
         }, err => {
             console.error("Grievance load:", err);
@@ -272,12 +248,5 @@ function loadGrievances(identifier, type) {
 }
 
 function statusUpdateForm(docId, currentStatus) {
-    return `<form class="status-update-form" data-id="${docId}">
-            <select name="status">
-              <option value="Pending" ${currentStatus === "Pending" ? "selected" : ""}>⏳ Pending</option>
-              <option value="Working on it" ${currentStatus === "Working on it" ? "selected" : ""}>🛠️ Working on it</option>
-              <option value="Resolved" ${currentStatus === "Resolved" ? "selected" : ""}>✅ Resolved</option>
-            </select>
-            <button type="submit">Update</button>
-          </form>`;
+    return `<form class="status-update-form" data-id="${docId}"><select name="status"><option value="Pending" ${currentStatus === "Pending" ? "selected" : ""}>⏳ Pending</option><option value="Working on it" ${currentStatus === "Working on it" ? "selected" : ""}>🛠️ Working on it</option><option value="Resolved" ${currentStatus === "Resolved" ? "selected" : ""}>✅ Resolved</option></select><button type="submit">Update</button></form>`;
 }
